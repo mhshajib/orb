@@ -9,6 +9,10 @@ const isOwner = computed(() => user.value?.role === 'owner')
 
 const { plans, orderedPlans } = usePlans()
 
+// Negotiated overrides. `isCustomised` is false on enterprise, where custom
+// caps are the norm rather than an exception worth flagging.
+const { isCustomised, customChanges } = useEffectiveLimits()
+
 const { data: subscription, pending: subPending, error: subError, refresh: refreshSub } = await useAsyncData(
   'billing-sub',
   () => getSubscription(),
@@ -196,6 +200,12 @@ const invoiceStatusBadge: Record<string, { cls: string, label: string }> = {
                   <span class="badge capitalize" :class="subStatusBadge[subscription.status] ?? 'badge-outline-secondary'">
                     {{ subscription.status.replace('_', ' ') }}
                   </span>
+                  <!-- Says the plan name alone doesn't describe what this org
+                       actually gets. The detail sits below. -->
+                  <span v-if="isCustomised && customChanges.length" class="badge bg-primary gap-1">
+                    <icon-star class="h-3.5 w-3.5" />
+                    Custom
+                  </span>
                 </div>
                 <div class="mt-1 flex flex-wrap items-center gap-x-2 text-sm capitalize text-white-dark">
                   <span>{{ subscription.cycle }} billing</span>
@@ -213,6 +223,20 @@ const invoiceStatusBadge: Record<string, { cls: string, label: string }> = {
               </div>
             </div>
 
+            <div v-if="isCustomised && customChanges.length" class="mt-5 border-t border-[#e0e6ed] pt-5 dark:border-[#1b2e4b]">
+              <div class="mb-3">
+                <h6 class="font-semibold dark:text-white-light">Active custom changes</h6>
+                <p class="mt-0.5 text-xs text-white-dark">
+                  Agreed for your organisation. These override the
+                  {{ plans[subscription.plan]?.label ?? subscription.plan }} plan's published limits, and are what we enforce.
+                </p>
+              </div>
+              <OrbPlanCustomizations
+                :changes="customChanges"
+                :plan-label="plans[subscription.plan]?.label ?? subscription.plan"
+              />
+            </div>
+
             <div v-if="subscription.plan !== 'free' && !subscription.cancel_at_period_end" class="mt-5 border-t border-[#e0e6ed] pt-4 dark:border-[#1b2e4b]">
               <button type="button" class="btn btn-outline-danger btn-sm gap-2" :disabled="!isOwner || cancelling" @click="onCancel">
                 <icon-loader v-if="cancelling" class="h-4 w-4 animate-spin" />
@@ -226,10 +250,29 @@ const invoiceStatusBadge: Record<string, { cls: string, label: string }> = {
               <div class="grid h-16 w-16 shrink-0 place-content-center rounded-2xl bg-primary/10 text-primary">
                 <icon-credit-card class="h-8 w-8" />
               </div>
-              <div class="text-sm text-white-dark">
-                You're on the <span class="font-semibold text-dark dark:text-white-light">Free</span> plan.
-                Pick a paid plan below to start sending more.
+              <div class="flex-1 text-sm text-white-dark">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-semibold text-dark dark:text-white-light">Free plan</span>
+                  <span v-if="isCustomised && customChanges.length" class="badge bg-primary gap-1">
+                    <icon-star class="h-3.5 w-3.5" />
+                    Custom
+                  </span>
+                </div>
+                <p class="mt-0.5">Pick a paid plan below to start sending more.</p>
               </div>
+            </div>
+
+            <!-- A free org can carry negotiated limits too, and it has no
+                 subscription record to hang them off - so the comparison is
+                 repeated here rather than living only in the paid branch. -->
+            <div v-if="isCustomised && customChanges.length" class="mt-5 border-t border-[#e0e6ed] pt-5 dark:border-[#1b2e4b]">
+              <div class="mb-3">
+                <h6 class="font-semibold dark:text-white-light">Active custom changes</h6>
+                <p class="mt-0.5 text-xs text-white-dark">
+                  Agreed for your organisation. These override the Free plan's published limits, and are what we enforce.
+                </p>
+              </div>
+              <OrbPlanCustomizations :changes="customChanges" plan-label="Free" />
             </div>
           </template>
         </div>
