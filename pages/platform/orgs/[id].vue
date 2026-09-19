@@ -90,6 +90,23 @@ function fmtLimit(n?: number): string {
   return n === -1 ? 'Unlimited' : new Intl.NumberFormat().format(n)
 }
 
+// The active overrides, as tiles. Built here rather than in the template so the
+// grid stays a single v-for instead of seven hand-written blocks.
+const customLimitTiles = computed(() => {
+  const c = org.value?.custom_limits
+  if (!c)
+    return []
+  return [
+    { label: 'Emails / month', value: fmtLimit(c.emails_per_month) },
+    { label: 'Users', value: fmtLimit(c.users) },
+    { label: 'Domains', value: fmtLimit(c.domains) },
+    { label: 'Webhooks', value: fmtLimit(c.webhooks) },
+    { label: 'Retention', value: c.retention_days == null ? '—' : c.retention_days === -1 ? 'Unlimited' : `${c.retention_days} days` },
+    { label: 'Monthly price', value: c.monthly_price_paisa != null ? formatPaisaBDT(c.monthly_price_paisa) : '—' },
+    { label: 'Attachments > 2 MB', value: c.attachments_over_2m ? 'Allowed' : 'No' },
+  ]
+})
+
 useHead(() => ({ title: org.value ? org.value.name : 'Organization' }))
 
 async function load() {
@@ -454,38 +471,17 @@ async function onToggleUser(u: PlatformOrgUser) {
           <span v-else class="text-sm text-white-dark">Using plan defaults</span>
         </div>
 
-        <!-- Active overrides -->
+        <!-- Active overrides. Same tile treatment as the customer's billing
+             page, so staff and customer read the same numbers the same way. -->
         <div v-if="org.custom_limits" class="mb-5">
-          <div class="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
-            <div>
-              <div class="text-xs uppercase text-white-dark">Emails / month</div>
-              <div class="font-semibold">{{ fmtLimit(org.custom_limits.emails_per_month) }}</div>
-            </div>
-            <div>
-              <div class="text-xs uppercase text-white-dark">Users</div>
-              <div class="font-semibold">{{ fmtLimit(org.custom_limits.users) }}</div>
-            </div>
-            <div>
-              <div class="text-xs uppercase text-white-dark">Domains</div>
-              <div class="font-semibold">{{ fmtLimit(org.custom_limits.domains) }}</div>
-            </div>
-            <div>
-              <div class="text-xs uppercase text-white-dark">Webhooks</div>
-              <div class="font-semibold">{{ fmtLimit(org.custom_limits.webhooks) }}</div>
-            </div>
-            <div>
-              <div class="text-xs uppercase text-white-dark">Retention (days)</div>
-              <div class="font-semibold">{{ fmtLimit(org.custom_limits.retention_days) }}</div>
-            </div>
-            <div>
-              <div class="text-xs uppercase text-white-dark">Monthly price</div>
-              <div class="font-semibold">
-                {{ org.custom_limits.monthly_price_paisa != null ? formatPaisaBDT(org.custom_limits.monthly_price_paisa) : '—' }}
-              </div>
-            </div>
-            <div>
-              <div class="text-xs uppercase text-white-dark">Attachments over 2 MB</div>
-              <div class="font-semibold">{{ org.custom_limits.attachments_over_2m ? 'Yes' : 'No' }}</div>
+          <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+            <div
+              v-for="t in customLimitTiles"
+              :key="t.label"
+              class="rounded-lg border border-white-light bg-[#fbfbfb] px-3 py-2.5 dark:border-[#1b2e4b] dark:bg-[#1a2941]"
+            >
+              <div class="truncate text-[11px] font-semibold uppercase tracking-wide text-white-dark">{{ t.label }}</div>
+              <div class="mt-0.5 truncate text-lg font-bold text-primary">{{ t.value }}</div>
             </div>
           </div>
           <button
