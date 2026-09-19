@@ -262,7 +262,7 @@ const hints = computed(() => {
                         <h5 class="text-lg font-semibold dark:text-white-light">Plan usage</h5>
                         <div class="flex items-center gap-2">
                             <span class="badge badge-outline-primary capitalize">{{ org?.plan ?? 'free' }}</span>
-                            <span v-if="isCustomised" class="badge bg-primary gap-1">
+                            <span v-if="isCustomised" class="badge inline-flex shrink-0 items-center gap-1 bg-primary">
                                 <icon-star class="h-3.5 w-3.5" />
                                 Custom
                             </span>
@@ -293,8 +293,9 @@ const hints = computed(() => {
                                 v-if="showsComparison && customCapChanges.length"
                                 :changes="customCapChanges"
                                 :plan-label="planLabel"
+                                dense
                             />
-                            <OrbPlanLimits v-else :rows="limitRows" />
+                            <OrbPlanLimits v-else :rows="limitRows" dense />
                             <!-- Billing is owner/admin only, so a member
                                  following this would just bounce back here. -->
                             <NuxtLink v-if="isManager" to="/app/billing" class="mt-3 inline-block text-xs font-semibold text-primary hover:underline">

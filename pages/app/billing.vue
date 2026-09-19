@@ -211,7 +211,7 @@ const invoiceStatusBadge: Record<string, { cls: string, label: string }> = {
                   </span>
                   <!-- Says the plan name alone doesn't describe what this org
                        actually gets. The detail sits below. -->
-                  <span v-if="isCustomised" class="badge bg-primary gap-1">
+                  <span v-if="isCustomised" class="badge inline-flex shrink-0 items-center gap-1 bg-primary">
                     <icon-star class="h-3.5 w-3.5" />
                     Custom
                   </span>
@@ -237,14 +237,9 @@ const invoiceStatusBadge: Record<string, { cls: string, label: string }> = {
                 <h6 class="font-semibold dark:text-white-light">
                   {{ showsComparison && customChanges.length ? 'Active custom changes' : 'Your agreed limits' }}
                 </h6>
-                <p class="mt-0.5 text-xs text-white-dark">
-                  <template v-if="showsComparison && customChanges.length">
-                    Agreed for your organisation. These override the {{ currentPlanLabel }} plan's published limits, and are what we enforce.
-                  </template>
-                  <template v-else>
-                    Agreed for your organisation, and what we enforce.
-                  </template>
-                </p>
+                <!-- The component captions its own strike-through notation, so
+                     this stays short rather than repeating it. -->
+                <p class="mt-0.5 text-xs text-white-dark">Agreed for your organisation, and what we enforce.</p>
               </div>
               <OrbPlanCustomizations
                 v-if="showsComparison && customChanges.length"
@@ -270,7 +265,7 @@ const invoiceStatusBadge: Record<string, { cls: string, label: string }> = {
               <div class="flex-1 text-sm text-white-dark">
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="font-semibold capitalize text-dark dark:text-white-light">{{ currentPlanLabel }} plan</span>
-                  <span v-if="isCustomised" class="badge bg-primary gap-1">
+                  <span v-if="isCustomised" class="badge inline-flex shrink-0 items-center gap-1 bg-primary">
                     <icon-star class="h-3.5 w-3.5" />
                     Custom
                   </span>

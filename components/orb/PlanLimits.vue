@@ -1,12 +1,18 @@
 <template>
-    <div v-if="rows.length" class="overflow-hidden rounded-lg border border-white-light dark:border-[#1b2e4b]">
+    <!-- Tiles rather than full-width rows: five label/value pairs stretched
+         across a wide panel put the number a mile from its label. -->
+    <div
+        v-if="rows.length"
+        class="grid gap-3"
+        :class="dense ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'"
+    >
         <div
             v-for="r in rows"
             :key="r.key"
-            class="flex items-center justify-between gap-3 border-b border-white-light px-4 py-2.5 last:border-b-0 dark:border-[#1b2e4b]"
+            class="rounded-lg border border-white-light bg-[#fbfbfb] px-3 py-2.5 dark:border-[#1b2e4b] dark:bg-[#1a2941]"
         >
-            <span class="min-w-0 truncate text-xs text-white-dark">{{ r.label }}</span>
-            <span class="shrink-0 text-sm font-bold text-primary">{{ r.value }}</span>
+            <div class="truncate text-[11px] font-semibold uppercase tracking-wide text-white-dark">{{ r.label }}</div>
+            <div class="mt-0.5 truncate text-lg font-bold text-primary">{{ r.value }}</div>
         </div>
     </div>
 </template>
@@ -22,8 +28,13 @@
      * a diff would read as a downgrade. "What are my limits" still has a useful
      * answer there; "how do they differ from the published plan" does not.
      */
-    defineProps<{
-        /** Rows to render — `limitRows` from useEffectiveLimits(). */
-        rows: LimitRow[];
-    }>();
+    withDefaults(
+        defineProps<{
+            /** Rows to render — `limitRows` from useEffectiveLimits(). */
+            rows: LimitRow[];
+            /** Two columns, for a narrow container like the dashboard's side panel. */
+            dense?: boolean;
+        }>(),
+        { dense: false },
+    );
 </script>
