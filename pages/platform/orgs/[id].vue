@@ -42,7 +42,9 @@ interface LimitsForm {
   webhooks: number | null
   retention_days: number | null
   monthly_bdt: number | null
-  attachments_over_2m: boolean
+  // null = "leave as-is". A plain boolean could not express that, so a blank
+  // form always sent false and silently stripped large-attachment support.
+  attachments_over_2m: boolean | null
 }
 function emptyLimitsForm(): LimitsForm {
   return {
@@ -52,10 +54,34 @@ function emptyLimitsForm(): LimitsForm {
     webhooks: null,
     retention_days: null,
     monthly_bdt: null,
-    attachments_over_2m: false,
+    attachments_over_2m: null,
   }
 }
 const limitsForm = ref<LimitsForm>(emptyLimitsForm())
+
+/**
+ * Load the org's stored override into the edit form.
+ *
+ * Without this the form was always blank, so staff had no idea what was
+ * currently set and could not tell an unset cap from a zero one - the fields
+ * simply never reflected saved state.
+ */
+function fillLimitsForm() {
+  const c = org.value?.custom_limits
+  if (!c) {
+    limitsForm.value = emptyLimitsForm()
+    return
+  }
+  limitsForm.value = {
+    emails_per_month: c.emails_per_month ?? null,
+    users: c.users ?? null,
+    domains: c.domains ?? null,
+    webhooks: c.webhooks ?? null,
+    retention_days: c.retention_days ?? null,
+    monthly_bdt: c.monthly_price_paisa != null ? Math.round(c.monthly_price_paisa / 100) : null,
+    attachments_over_2m: c.attachments_over_2m ?? null,
+  }
+}
 
 // Limit overrides use -1 to mean "Unlimited" (not null).
 function fmtLimit(n?: number): string {
@@ -77,6 +103,7 @@ async function load() {
     org.value = o
     users.value = u
     selectedPlan.value = o.plan
+    fillLimitsForm()
   }
   catch (e) {
     error.value = errMsg(e, 'Failed to load organization')
@@ -156,6 +183,7 @@ async function refreshOrg() {
   org.value = await getOrg(orgId.value)
   if (org.value)
     selectedPlan.value = org.value.plan
+  fillLimitsForm()
 }
 
 async function onApplyPlan() {
@@ -198,7 +226,7 @@ async function onSetLimits() {
   if (f.webhooks != null) limits.webhooks = Number(f.webhooks)
   if (f.retention_days != null) limits.retention_days = Number(f.retention_days)
   if (f.monthly_bdt != null) limits.monthly_price_paisa = Math.round(f.monthly_bdt * 100)
-  limits.attachments_over_2m = f.attachments_over_2m
+  if (f.attachments_over_2m != null) limits.attachments_over_2m = f.attachments_over_2m
 
   const ok = await toast.confirm({
     title: 'Set custom limits?',
@@ -211,7 +239,8 @@ async function onSetLimits() {
   try {
     await setOrgLimits(org.value.id, limits)
     toast.success('Custom limits set')
-    limitsForm.value = emptyLimitsForm()
+    // refreshOrg() repopulates the form from what was actually saved, so the
+    // fields show the stored values rather than being blanked.
     await refreshOrg()
   }
   catch (e) {
@@ -477,33 +506,37 @@ async function onToggleUser(u: PlatformOrgUser) {
           <div class="grid gap-4 sm:grid-cols-3">
             <div>
               <label class="mb-1.5 block text-sm font-semibold">Emails / month</label>
-              <input v-model.number="limitsForm.emails_per_month" type="number" step="1" class="form-input" placeholder="default" />
+              <input v-model.number="limitsForm.emails_per_month" type="number" step="1" class="form-input" placeholder="inherit" />
             </div>
             <div>
               <label class="mb-1.5 block text-sm font-semibold">Users</label>
-              <input v-model.number="limitsForm.users" type="number" step="1" class="form-input" placeholder="default" />
+              <input v-model.number="limitsForm.users" type="number" step="1" class="form-input" placeholder="inherit" />
             </div>
             <div>
               <label class="mb-1.5 block text-sm font-semibold">Domains</label>
-              <input v-model.number="limitsForm.domains" type="number" step="1" class="form-input" placeholder="default" />
+              <input v-model.number="limitsForm.domains" type="number" step="1" class="form-input" placeholder="inherit" />
             </div>
             <div>
               <label class="mb-1.5 block text-sm font-semibold">Webhooks</label>
-              <input v-model.number="limitsForm.webhooks" type="number" step="1" class="form-input" placeholder="default" />
+              <input v-model.number="limitsForm.webhooks" type="number" step="1" class="form-input" placeholder="inherit" />
             </div>
             <div>
               <label class="mb-1.5 block text-sm font-semibold">Retention (days)</label>
-              <input v-model.number="limitsForm.retention_days" type="number" step="1" class="form-input" placeholder="default" />
+              <input v-model.number="limitsForm.retention_days" type="number" step="1" class="form-input" placeholder="inherit" />
             </div>
             <div>
               <label class="mb-1.5 block text-sm font-semibold">Monthly price (৳)</label>
-              <input v-model.number="limitsForm.monthly_bdt" type="number" min="0" step="1" class="form-input" placeholder="default" />
+              <input v-model.number="limitsForm.monthly_bdt" type="number" min="0" step="1" class="form-input" placeholder="inherit" />
             </div>
           </div>
-          <label class="inline-flex cursor-pointer items-center gap-2">
-            <input v-model="limitsForm.attachments_over_2m" type="checkbox" class="form-checkbox" />
-            <span>Attachments over 2 MB</span>
-          </label>
+          <div>
+            <label class="mb-1.5 block text-sm font-semibold">Attachments over 2 MB</label>
+            <select v-model="limitsForm.attachments_over_2m" class="form-select w-auto">
+              <option :value="null">Inherit from plan</option>
+              <option :value="true">Allowed</option>
+              <option :value="false">Not allowed</option>
+            </select>
+          </div>
           <div>
             <button type="submit" class="btn btn-primary" :disabled="limitsBusy">
               {{ limitsBusy ? 'Saving…' : 'Set custom limits' }}

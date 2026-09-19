@@ -16,6 +16,9 @@ const { displayName } = useSelf()
 const isManager = computed(() => user.value?.role === 'owner' || user.value?.role === 'admin')
 const sharedDomain = (useRuntimeConfig().public.sharedSendingDomain as string) || 'send.orb.bd'
 const isFree = computed(() => (org.value?.plan ?? 'free') === 'free')
+// Caps the backend actually enforces: the org's negotiated override where set,
+// otherwise its plan.
+const { limits: effectiveLimits, hasCustomLimits } = useEffectiveLimits()
 const sharedSender = computed(() => (org.value?.slug ? `${org.value.slug}@${sharedDomain}` : ''))
 
 // Org stats power every counter on the dashboard. Best-effort: a failure
@@ -88,7 +91,9 @@ interface UsageRow {
   near: boolean
 }
 const usage = computed<UsageRow[]>(() => {
-  const limits = PLAN_LIMITS[org.value?.plan ?? 'free']
+  // Effective limits, not the static PLAN_LIMITS table: an org with negotiated
+  // caps must see its real quota here, the same numbers the backend enforces.
+  const limits = effectiveLimits.value
   function row(label: string, used: number, cap: number | null): UsageRow {
     const unlimited = cap == null
     const pct = unlimited

@@ -6,7 +6,6 @@ useHead({ title: 'Team' })
 const { user } = useAuth()
 const { success, error: toastError, confirm } = useToast()
 const orgState = useOrg()
-const { plans } = usePlans()
 
 const myRole = computed<UserRole | undefined>(() => user.value?.role)
 const myId = computed(() => user.value?.user_id)
@@ -55,9 +54,14 @@ const invitableRoles = computed<('admin' | 'member')[]>(() => {
   return []
 })
 
-// ---------- Plan user-limit usage ----------
+// ---------- Seat-limit usage ----------
+// Resolved through useEffectiveLimits so a negotiated per-org override wins over
+// the plan's cap. Reading plans[...] directly is what made an org with unlimited
+// seats still show "n/15 seats" while the backend happily allowed more.
+const { limits: effectiveLimits, hasCustomLimits } = useEffectiveLimits()
+// Still shown as a badge next to the seat count.
 const currentPlanKey = computed(() => orgState.value?.plan ?? 'free')
-const userLimit = computed<number | null>(() => plans.value[currentPlanKey.value]?.users ?? null)
+const userLimit = computed<number | null>(() => effectiveLimits.value?.users ?? null)
 const userCount = computed(() => data.value?.meta.total ?? humanUsers.value.length)
 const atUserLimit = computed(() => userLimit.value != null && userCount.value >= userLimit.value)
 const activeCount = computed(() => humanUsers.value.filter(u => u.status === 'active').length)

@@ -1,3 +1,20 @@
+/**
+ * Per-org negotiated caps set by staff in the platform console. Overrides the
+ * org's plan field-by-field. Absent (undefined/null) means "no override, use
+ * the plan". -1 means unlimited, matching the backend's sentinel.
+ */
+export interface OrgCustomLimits {
+  monthly_price_paisa: number
+  yearly_price_paisa: number
+  emails_per_month: number
+  users: number
+  domains: number
+  webhooks: number
+  retention_days: number
+  attachments_over_2m: boolean
+  analytics: string
+}
+
 export interface Org {
   id: string
   name: string
@@ -6,6 +23,13 @@ export interface Org {
   is_system: boolean
   suspended: boolean
   enforce_2fa: boolean
+  /**
+   * The API has always sent this; the UI just never read it, so an org with
+   * negotiated limits still saw its plan's caps everywhere (e.g. "n/15 seats"
+   * for an org staff had set to unlimited). Quota enforcement on the backend
+   * always honoured it, so the UI was the only thing lying.
+   */
+  custom_limits?: OrgCustomLimits | null
   created_at: string
   updated_at: string
 }
