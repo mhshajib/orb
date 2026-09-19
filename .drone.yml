@@ -1,0 +1,51 @@
+kind: pipeline
+type: docker
+name: orb-frontend
+
+clone:
+  depth: 1
+
+steps:
+  - name: build
+    image: node:20-alpine
+    environment:
+      CONSUL: http://192.168.68.117:8500
+      APP: orb
+    commands:
+      # node:20 matches the node the server runs (v20.20.0 under supervisor), so
+      # the Nitro output is never built against a newer runtime than serves it.
+      #
+      # .env is NOT optional here. nuxt.config.ts defaults apiBase to
+      # http://localhost:8080, so a build without it would ship an app pointing at
+      # nothing. Hence the hard failure below rather than a warning.
+      - wget -qO .env "$CONSUL/v1/kv/apps/$APP/prod/.env?raw"
+      - test -s .env || (echo "ERROR empty or missing .env in consul at apps/orb/prod/.env"; exit 1)
+      - grep -q '^NUXT_API_BASE=https' .env || (echo "ERROR NUXT_API_BASE in consul is not an https url; refusing to build production against it"; exit 1)
+      - npm ci
+      - npm run build
+      - test -f .output/server/index.mjs || (echo "ERROR build produced no nitro server"; exit 1)
+      - test -d .output/public || (echo "ERROR build produced no public assets"; exit 1)
+      # The platform/staff console is the thing this codebase has and the rewrite
+      # does not. If a build ever stops producing it, that is a regression worth
+      # failing on rather than quietly shipping.
+      - test -f .output/server/chunks/routes/api/platform/auth/login.post.mjs || (echo "ERROR build is missing the platform console routes"; exit 1)
+
+  # All deploy logic lives in deploy/ci-deploy.sh. Keeping shell out of this file
+  # is deliberate: a YAML plain scalar containing ": " parses as a map, so an
+  # inline `echo "ERROR: ..."` breaks the pipeline at unmarshal time.
+  - name: deploy
+    image: alpine:3.20
+    environment:
+      CONSUL: http://192.168.68.117:8500
+      APP: orb
+      DEPLOY_HOST: 172.104.59.12
+      DEPLOY_USER: ci
+    commands:
+      - apk add --no-cache openssh-client rsync
+      - sh deploy/ci-deploy.sh
+
+trigger:
+  branch:
+    - main
+  event:
+    - push
