@@ -90,7 +90,7 @@ function fmtDate(s: string) {
       <div>
         <h1 class="text-2xl font-bold text-dark dark:text-white-light">Orb sending domains</h1>
         <p class="mt-1 max-w-2xl text-sm text-white-dark">
-          Provision and verify Orb's own domains (send.orb.bd for free-tier sending, orb.bd for transactional + employee mail).
+          Provision and verify Orb's own domains (orb.bd for customer mailboxes + employee mail, send.orb.bd for Orb's own transactional mail).
         </p>
       </div>
       <button type="button" class="btn btn-primary gap-2" @click="openDialog">

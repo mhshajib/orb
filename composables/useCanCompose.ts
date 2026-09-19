@@ -15,7 +15,7 @@
 export function useCanCompose() {
   const org = useOrg()
   const senders = useState<string[] | null>('compose.senders', () => null)
-  const sharedDomain = (useRuntimeConfig().public.sharedSendingDomain as string) || 'send.orb.bd'
+  const { sharedDomain } = useMailConfig()
 
   async function ensureComposeData() {
     if (senders.value !== null) return
@@ -30,7 +30,7 @@ export function useCanCompose() {
   }
 
   // The shared free-tier sender, derived from the org slug.
-  const sharedSender = computed(() => (org.value?.slug ? `${org.value.slug}@${sharedDomain}` : ''))
+  const sharedSender = computed(() => (org.value?.slug ? `${org.value.slug}@${sharedDomain.value}` : ''))
 
   const senderOptions = computed<string[]>(() => {
     // Callers fire ensureComposeData() without awaiting it, so until the server

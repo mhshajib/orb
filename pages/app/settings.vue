@@ -51,7 +51,7 @@ if (!orgState.value) await fetchOrg()
 const profileName = ref('')
 const profileDirty = computed(() => self.value && self.value.name !== profileName.value)
 
-const sharedDomain = (useRuntimeConfig().public.sharedSendingDomain as string) || 'send.orb.bd'
+const { sharedDomain } = useMailConfig()
 
 // Primary first, then the rest. `addresses` may be absent on a record the
 // backfill has not touched, so fall back to the single email rather than
@@ -65,7 +65,7 @@ const myAddresses = computed(() => {
     const a = (raw ?? '').toLowerCase().trim()
     if (!a || seen.has(a)) continue
     seen.add(a)
-    rows.push({ address: a, primary: a === primary, orb: a.endsWith(`@${sharedDomain}`) })
+    rows.push({ address: a, primary: a === primary, orb: a.endsWith(`@${sharedDomain.value}`) })
   }
   return rows
 })

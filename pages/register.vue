@@ -6,7 +6,7 @@ useHead({ title: 'Sign up' })
 
 const { register } = useAuth()
 const { success, error: toastError } = useToast()
-const sharedDomain = (useRuntimeConfig().public.sharedSendingDomain as string) || 'send.orb.bd'
+const { sharedDomain } = useMailConfig()
 
 const orgName = ref('')
 const handle = ref('') // = org slug = the free "Orb email" local part
@@ -57,7 +57,7 @@ watch(handle, (v) => {
   }, 350)
 })
 
-const orbEmail = computed(() => (handle.value ? `${handle.value}@${sharedDomain}` : `yourname@${sharedDomain}`))
+const orbEmail = computed(() => (handle.value ? `${handle.value}@${sharedDomain.value}` : `yourname@${sharedDomain.value}`))
 
 async function onSubmit() {
   if (loading.value) return

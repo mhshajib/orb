@@ -22,7 +22,7 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     yearlyBDT: 0,
     emails: 50,
     users: 3,
-    // Free orgs send from the shared Orb domain (name@send.orb.bd) — 0 custom
+    // Free orgs get an Orb mailbox on the shared domain (name@orb.bd) — 0 custom
     // verified domains. Custom domains are a paid feature.
     domains: 0,
     webhooks: 1,

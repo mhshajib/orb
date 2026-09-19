@@ -2,7 +2,7 @@ import type { Domain, ResendRegion } from '@/composables/useDomains'
 
 /**
  * Staff-console management of ORB'S OWN sending domains (the system org):
- * send.orb.bd (free-tier pool) + orb.bd (transactional/brand + employee mail).
+ * orb.bd (customer mailboxes + employee mail) + send.orb.bd (Orb's own transactional mail).
  * Reuses the same Domain/DNSRecord shapes as the customer domain flow.
  */
 export function usePlatformDomains() {

@@ -6,9 +6,9 @@ useHead({ title: 'Domains' })
 const { success: toastSuccess, error: toastError } = useToast()
 
 const org = useOrg()
-const sharedDomain = (useRuntimeConfig().public.sharedSendingDomain as string) || 'send.orb.bd'
+const { sharedDomain } = useMailConfig()
 const isFree = computed(() => (org.value?.plan ?? 'free') === 'free')
-const sharedSender = computed(() => (org.value?.slug ? `${org.value.slug}@${sharedDomain}` : `your-handle@${sharedDomain}`))
+const sharedSender = computed(() => (org.value?.slug ? `${org.value.slug}@${sharedDomain.value}` : `your-handle@${sharedDomain.value}`))
 
 const { data: domains, pending, error, refresh } = await useAsyncData('app-domains', () => listDomains())
 

@@ -14,14 +14,14 @@ const { user } = useAuth()
 const { displayName } = useSelf()
 
 const isManager = computed(() => user.value?.role === 'owner' || user.value?.role === 'admin')
-const sharedDomain = (useRuntimeConfig().public.sharedSendingDomain as string) || 'send.orb.bd'
+const { sharedDomain } = useMailConfig()
 const isFree = computed(() => (org.value?.plan ?? 'free') === 'free')
 // Caps the backend actually enforces: the org's negotiated override where set,
 // otherwise its plan.
 const { plans } = usePlans()
 const { limits: effectiveLimits, isCustomised, showsComparison, customCapChanges, limitRows } = useEffectiveLimits()
 const planLabel = computed(() => plans.value[org.value?.plan ?? 'free']?.label ?? (org.value?.plan ?? 'free'))
-const sharedSender = computed(() => (org.value?.slug ? `${org.value.slug}@${sharedDomain}` : ''))
+const sharedSender = computed(() => (org.value?.slug ? `${org.value.slug}@${sharedDomain.value}` : ''))
 
 // Org stats power every counter on the dashboard. Best-effort: a failure
 // shouldn't blank the whole page, so we default to a zeroed shape.

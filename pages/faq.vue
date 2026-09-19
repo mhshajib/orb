@@ -13,7 +13,7 @@ const faqs: QA[] = [
   },
   {
     q: 'How does the free plan work?',
-    a: 'Every new organisation starts free with 50 emails per month and no card required. On the free plan you send from a shared Orb address (yourname@send.orb.bd) so you can start immediately without configuring DNS.',
+    a: 'Every new organisation starts free with 50 emails per month and no card required. On the free plan you get a real Orb mailbox (yourname@orb.bd) that sends and receives, so you can start immediately without configuring DNS.',
   },
   {
     q: 'Can I send from my own domain?',

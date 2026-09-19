@@ -81,7 +81,7 @@ export default defineNuxtConfig({
             wsBase: 'ws://localhost:8080/ws',
             // Shared free-tier sending domain — free orgs send as "<slug>@<this>".
             // Must match the backend's mailer.shared_sending_domain.
-            sharedSendingDomain: 'send.orb.bd',
+            sharedSendingDomain: 'orb.bd',
         },
     },
 
