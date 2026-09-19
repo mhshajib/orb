@@ -21,6 +21,17 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return
   }
 
+  // ── Developer portal ────────────────────────────────────────────────
+  // Its own shell rather than a section of /app, but it is still customer-only:
+  // it shows the org's API credentials and can fire real API calls as them.
+  if (path === '/developers' || path.startsWith('/developers/')) {
+    const { isAuthed } = useAuth()
+    if (!isAuthed.value) {
+      return navigateTo({ path: '/login', query: { next: to.fullPath } })
+    }
+    return
+  }
+
   // ── Platform (staff) ────────────────────────────────────────────────
   if (path === '/platform' || path.startsWith('/platform/')) {
     if (path === '/platform/login') return

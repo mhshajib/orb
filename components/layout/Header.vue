@@ -74,6 +74,11 @@
                                             </NuxtLink>
                                         </li>
                                         <li>
+                                            <NuxtLink to="/developers" class="dark:hover:text-white" @click="close()">
+                                                <icon-book class="h-4.5 w-4.5 shrink-0 ltr:mr-2 rtl:ml-2" /> API &amp; Docs
+                                            </NuxtLink>
+                                        </li>
+                                        <li>
                                             <NuxtLink to="/app/api-keys" class="dark:hover:text-white" @click="close()">
                                                 <icon-code class="h-4.5 w-4.5 shrink-0 ltr:mr-2 rtl:ml-2" /> API Keys
                                             </NuxtLink>
