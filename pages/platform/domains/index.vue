@@ -99,9 +99,12 @@ function fmtDate(s: string) {
     </div>
 
     <!-- Load error -->
-    <div v-if="error" class="panel border border-danger/40 text-sm text-danger">
-      {{ errMsg(error, 'Could not load domains') }}
-    </div>
+    <div v-if="error" class="panel border border-danger/40">
+        <div class="flex flex-wrap items-center gap-3">
+          <p class="min-w-0 flex-1 break-words text-sm text-danger">{{ errMsg(error, 'Could not load domains') }}</p>
+          <button type="button" class="btn btn-outline-danger btn-sm" @click="refresh()">Try again</button>
+        </div>
+      </div>
 
     <!-- Loading -->
     <div v-else-if="pending && !domains" class="panel">

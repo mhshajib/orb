@@ -1,14 +1,17 @@
 <template>
     <div class="grid grid-cols-1 gap-5 xl:grid-cols-[220px_minmax(0,1fr)]">
         <!-- Contents -->
-        <aside class="panel h-fit xl:sticky xl:top-5">
-            <h3 class="mb-2 text-[11px] font-bold uppercase tracking-wide text-white-dark">Contents</h3>
-            <ul class="space-y-0.5 text-sm">
+        <aside class="panel !p-0 h-fit xl:sticky xl:top-5">
+            <div class="border-b border-white-light px-4 py-3 dark:border-[#1b2e4b]">
+                <h3 class="text-sm font-bold uppercase tracking-wide dark:text-white-light">Contents</h3>
+            </div>
+            <ul class="max-h-[70vh] space-y-0.5 overflow-y-auto p-3 text-sm">
                 <li v-for="s in sections" :key="s.id">
-                    <a :href="`#${s.id}`" class="block rounded px-2 py-1.5 hover:bg-white-light/60 dark:hover:bg-[#1b2e4b]">{{ s.label }}</a>
+                    <a :href="`#${s.id}`" class="block rounded-md px-2 py-1.5 transition duration-300 hover:bg-primary-light hover:text-primary dark:hover:bg-[#1b2e4b]">{{ s.label }}</a>
                 </li>
+                <li class="!mt-3 px-2 text-[11px] font-bold uppercase tracking-wide text-white-dark">Endpoints</li>
                 <li v-for="group in API_GROUPS" :key="group">
-                    <a :href="`#group-${slug(group)}`" class="block rounded px-2 py-1.5 hover:bg-white-light/60 dark:hover:bg-[#1b2e4b]">{{ group }}</a>
+                    <a :href="`#group-${slug(group)}`" class="block rounded-md px-2 py-1.5 transition duration-300 hover:bg-primary-light hover:text-primary dark:hover:bg-[#1b2e4b]">{{ group }}</a>
                 </li>
             </ul>
         </aside>
@@ -58,9 +61,10 @@
             <section v-for="group in API_GROUPS" :id="`group-${slug(group)}`" :key="group" class="mt-8">
                 <h2 class="mb-3 text-lg font-bold dark:text-white-light">{{ group }}</h2>
                 <article v-for="e in endpointsByGroup(group)" :id="e.id" :key="e.id" class="panel mb-4">
-                    <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2 rounded-md bg-[#fbfbfb] px-3 py-2 dark:bg-[#1a2941]">
                         <OrbMethodBadge :method="e.method" />
-                        <code class="font-mono text-sm">{{ e.path }}</code>
+                        <code class="min-w-0 flex-1 truncate font-mono text-sm">{{ e.path }}</code>
+                        <OrbCopyButton :value="API_BASE + e.path" />
                     </div>
                     <h3 class="mt-3 text-base font-bold dark:text-white-light">{{ e.title }}</h3>
                     <p class="mt-1 text-white-dark">{{ e.summary }}</p>
@@ -108,7 +112,6 @@
     import { API_BASE, API_GROUPS, AUTH_NOTE, WEBHOOK_EVENTS, WEBHOOK_SIGNATURE_NOTE, endpointsByGroup } from '@/utils/apiSpec';
     import { codeSample } from '@/utils/codeSamples';
 
-    definePageMeta({ layout: 'developers' });
     useHead({ title: 'API Documentation' });
 
     const { apiKey } = useDeveloperKey();

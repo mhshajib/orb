@@ -1,20 +1,22 @@
 <template>
-    <div class="flex flex-wrap items-center gap-1">
-        <button
-            v-for="lang in CODE_LANGUAGES"
-            :key="lang.id"
-            type="button"
-            class="rounded px-2.5 py-1 text-xs font-semibold transition"
-            :class="
-                modelValue === lang.id
-                    ? 'bg-primary text-white'
-                    : 'text-white-dark hover:bg-[#1b2e4b] hover:text-white'
-            "
-            @click="$emit('update:modelValue', lang.id)"
-        >
-            {{ lang.label }}
-        </button>
-    </div>
+    <!-- Theme pill-tab styling, matching the rest of the app rather than a
+         bespoke button row. -->
+    <ul class="flex flex-wrap items-center gap-1.5">
+        <li v-for="lang in CODE_LANGUAGES" :key="lang.id">
+            <button
+                type="button"
+                class="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition duration-300"
+                :class="
+                    modelValue === lang.id
+                        ? 'border-primary bg-primary text-white shadow-md shadow-primary/30'
+                        : 'border-white-light text-white-dark hover:border-primary hover:text-primary dark:border-[#1b2e4b]'
+                "
+                @click="$emit('update:modelValue', lang.id)"
+            >
+                {{ lang.label }}
+            </button>
+        </li>
+    </ul>
 </template>
 
 <script lang="ts" setup>

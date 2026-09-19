@@ -135,12 +135,19 @@ async function onSave() {
         Edits apply immediately to quota + the public pricing page.
       </div>
 
-      <div v-if="error" class="panel border border-danger/40 text-sm text-danger">
-        {{ errMsg(error, 'Failed to load plans') }}
+      <div v-if="error" class="panel border border-danger/40">
+        <div class="flex flex-wrap items-center gap-3">
+          <p class="min-w-0 flex-1 break-words text-sm text-danger">{{ errMsg(error, 'Failed to load plans') }}</p>
+          <button type="button" class="btn btn-outline-danger btn-sm" @click="refresh()">Try again</button>
+        </div>
       </div>
 
-      <div v-else-if="pending && !plans?.length" class="panel text-center text-white-dark">
-        Loading…
+      <div v-else-if="pending && !plans?.length" class="panel">
+        <div class="space-y-3">
+          <div class="h-5 w-48 animate-pulse rounded bg-white-light dark:bg-dark/40"></div>
+          <div class="h-5 w-64 animate-pulse rounded bg-white-light dark:bg-dark/40"></div>
+          <div class="h-5 w-40 animate-pulse rounded bg-white-light dark:bg-dark/40"></div>
+        </div>
       </div>
 
       <div v-else class="panel p-0">

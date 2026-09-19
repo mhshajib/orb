@@ -1,13 +1,21 @@
 <template>
     <div class="mx-auto max-w-4xl">
-        <div class="mb-6">
-            <h1 class="text-2xl font-bold dark:text-white-light">Webhook Integration</h1>
-            <p class="mt-1 text-white-dark">Have Orb push delivery events to your app instead of polling for them.</p>
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h1 class="text-2xl font-bold dark:text-white-light">Webhook Integration</h1>
+                <p class="mt-1 text-white-dark">Have Orb push delivery events to your app instead of polling for them.</p>
+            </div>
+            <NuxtLink to="/app/webhooks" class="btn btn-primary">Configure endpoints</NuxtLink>
         </div>
 
         <div class="panel">
-            <h2 class="text-base font-bold dark:text-white-light">What Orb sends</h2>
-            <p class="mt-1 text-white-dark">
+            <div class="mb-4 flex items-center gap-3 border-b border-white-light pb-4 dark:border-[#1b2e4b]">
+                <div class="grid h-10 w-10 place-content-center rounded-xl bg-primary-light text-primary dark:bg-primary dark:text-white">
+                    <icon-router class="h-5 w-5" />
+                </div>
+                <h2 class="text-base font-bold dark:text-white-light">What Orb sends</h2>
+            </div>
+            <p class="text-white-dark">
                 Every event is a POST to your URL with a JSON envelope. <span class="font-mono">data</span> holds the
                 object the event is about.
             </p>
@@ -15,8 +23,13 @@
         </div>
 
         <div class="panel mt-5">
-            <h2 class="text-base font-bold dark:text-white-light">Verifying requests</h2>
-            <p class="mt-1 text-white-dark">
+            <div class="mb-4 flex items-center gap-3 border-b border-white-light pb-4 dark:border-[#1b2e4b]">
+                <div class="grid h-10 w-10 place-content-center rounded-xl bg-danger-light text-danger dark:bg-danger dark:text-white">
+                    <icon-lock class="h-5 w-5" />
+                </div>
+                <h2 class="text-base font-bold dark:text-white-light">Verifying requests</h2>
+            </div>
+            <p class="text-white-dark">
                 Anyone can POST to your endpoint, so check the signature before trusting a payload.
             </p>
             <pre class="mt-3 whitespace-pre-wrap rounded-md bg-[#fbfbfb] p-4 font-mono text-xs dark:bg-[#1a2941]">{{ WEBHOOK_SIGNATURE_NOTE }}</pre>
@@ -28,14 +41,18 @@
         </div>
 
         <div class="panel mt-5">
-            <h2 class="text-base font-bold dark:text-white-light">Requirements</h2>
-            <ul class="mt-2 list-inside list-disc space-y-1.5 text-white-dark">
-                <li>Your URL must be reachable over HTTPS with a valid certificate.</li>
-                <li>Respond within the timeout — do the work after you answer, not before.</li>
-                <li>Return any 2xx to acknowledge. Anything else is treated as a failure and retried.</li>
-                <li>Expect retries, and expect the same event more than once. Make your handler idempotent by keying on <span class="font-mono">X-Orb-Delivery</span>.</li>
+            <div class="mb-4 flex items-center gap-3 border-b border-white-light pb-4 dark:border-[#1b2e4b]">
+                <div class="grid h-10 w-10 place-content-center rounded-xl bg-success-light text-success dark:bg-success dark:text-white">
+                    <icon-circle-check class="h-5 w-5" />
+                </div>
+                <h2 class="text-base font-bold dark:text-white-light">Endpoint requirements</h2>
+            </div>
+            <ul class="space-y-3">
+                <li v-for="req in requirements" :key="req" class="flex items-start gap-2.5">
+                    <icon-circle-check class="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                    <span class="text-white-dark" v-html="req"></span>
+                </li>
             </ul>
-            <NuxtLink to="/app/webhooks" class="btn btn-primary btn-sm mt-4">Configure endpoints</NuxtLink>
         </div>
     </div>
 </template>
@@ -44,8 +61,14 @@
     import { WEBHOOK_SIGNATURE_NOTE } from '@/utils/apiSpec';
     import { CODE_LANGUAGES } from '@/utils/codeSamples';
 
-    definePageMeta({ layout: 'developers' });
     useHead({ title: 'Webhook Integration' });
+
+    const requirements = [
+        'Your URL must be reachable over HTTPS with a valid certificate.',
+        'Respond within the timeout — do the work <em>after</em> you answer, not before.',
+        'Return any 2xx to acknowledge. Anything else is treated as a failure and retried.',
+        'Expect retries, and the same event more than once. Key your handler on <code class="font-mono text-xs">X-Orb-Delivery</code> to stay idempotent.',
+    ];
 
     const language = ref('node');
     const hljsLang = computed(() => CODE_LANGUAGES.find((l) => l.id === language.value)?.hljs ?? 'javascript');

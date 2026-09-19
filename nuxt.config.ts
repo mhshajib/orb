@@ -91,13 +91,6 @@ export default defineNuxtConfig({
     routeRules: {
         '/app/**': { ssr: false },
         '/platform/**': { ssr: false },
-        // The developer portal is behind auth and leans on the same Vristo
-        // pieces plus highlight.js, which touches the DOM directly. Same
-        // reasoning as above - there is nothing to gain from SSR here and a
-        // client-only render avoids SSR-only-component breakage.
-        // Both patterns: '/developers/**' does not match '/developers' itself.
-        '/developers': { ssr: false },
-        '/developers/**': { ssr: false },
     },
 
     vite: {
