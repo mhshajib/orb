@@ -11,7 +11,7 @@
                             <div class="flex items-center justify-between px-4 py-3">
                                 <NuxtLink to="/platform" class="main-logo flex shrink-0 items-center">
                                     <span class="flex h-8 w-8 items-center justify-center rounded-md bg-dark text-white">
-                                        <icon-server class="h-5 w-5" />
+                                        <icon-orb class="h-5 w-5" />
                                     </span>
                                     <span class="align-middle text-xl font-semibold ltr:ml-2 rtl:mr-2 dark:text-white-light">Orb Staff</span>
                                 </NuxtLink>

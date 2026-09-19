@@ -73,10 +73,31 @@
                                                 <icon-user class="h-4.5 w-4.5 shrink-0 ltr:mr-2 rtl:ml-2" /> Profile &amp; Security
                                             </NuxtLink>
                                         </li>
+                                        <!-- Expands in place rather than navigating away, so the
+                                             six developer pages are reachable from this menu
+                                             without first landing on one of them. -->
                                         <li>
-                                            <NuxtLink to="/app/developers" class="dark:hover:text-white" @click="close()">
+                                            <button type="button" class="flex w-full items-center dark:hover:text-white" @click.stop="devOpen = !devOpen">
                                                 <icon-book class="h-4.5 w-4.5 shrink-0 ltr:mr-2 rtl:ml-2" /> API &amp; Docs
-                                            </NuxtLink>
+                                                <icon-caret-down
+                                                    class="h-4 w-4 shrink-0 transition duration-300 ltr:ml-auto rtl:mr-auto"
+                                                    :class="{ '-rotate-90 rtl:rotate-90': !devOpen }"
+                                                />
+                                            </button>
+                                            <VueCollapsible :is-open="devOpen">
+                                                <ul class="space-y-0.5 border-t border-white-light py-1 dark:border-white-light/10">
+                                                    <li v-for="item in developerItems" :key="item.to">
+                                                        <NuxtLink
+                                                            :to="item.to"
+                                                            class="!py-2 text-[13px] ltr:!pl-11 rtl:!pr-11 dark:hover:text-white"
+                                                            @click="close()"
+                                                        >
+                                                            <component :is="item.icon" class="h-4 w-4 shrink-0 ltr:mr-2 rtl:ml-2" />
+                                                            {{ item.label }}
+                                                        </NuxtLink>
+                                                    </li>
+                                                </ul>
+                                            </VueCollapsible>
                                         </li>
                                         <li>
                                             <NuxtLink to="/app/api-keys" class="dark:hover:text-white" @click="close()">
@@ -116,12 +137,33 @@
 
 <script lang="ts" setup>
     import { useAppStore } from '@/stores/index';
+    // The theme's own collapsible, as used by its sidebar sub-menus.
+    import VueCollapsible from 'vue-height-collapsible/vue3';
+    import IconBolt from '@/components/icon/icon-bolt.vue';
+    import IconLock from '@/components/icon/icon-lock.vue';
+    import IconRouter from '@/components/icon/icon-router.vue';
+    import IconListCheck from '@/components/icon/icon-list-check.vue';
+    import IconCode from '@/components/icon/icon-code.vue';
+    import IconBook from '@/components/icon/icon-book.vue';
 
     const store = useAppStore();
     const { logout } = useAuth();
     const { self, initials, displayName } = useSelf();
     const org = useOrg();
     const { count: unread } = useUnreadEmails();
+
+    const route = useRoute();
+    const developerItems = [
+        { to: '/app/developers', label: 'Quick Setup', icon: IconBolt },
+        { to: '/app/developers/credentials', label: 'API Credentials', icon: IconLock },
+        { to: '/app/developers/webhooks', label: 'Webhook Integration', icon: IconRouter },
+        { to: '/app/developers/events', label: 'Webhook Events', icon: IconListCheck },
+        { to: '/app/developers/reference', label: 'API Reference', icon: IconCode },
+        { to: '/app/developers/documentation', label: 'API Documentation', icon: IconBook },
+    ];
+    // Already expanded when you are inside the section, so reopening the menu
+    // shows where you are rather than a collapsed row.
+    const devOpen = ref(route.path.startsWith('/app/developers'));
 
     const onLogout = async (close: () => void) => {
         close();

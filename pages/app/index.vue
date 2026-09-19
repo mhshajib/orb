@@ -23,6 +23,14 @@ const sharedSender = computed(() => (org.value?.slug ? `${org.value.slug}@${shar
 
 // Org stats power every counter on the dashboard. Best-effort: a failure
 // shouldn't blank the whole page, so we default to a zeroed shape.
+// The get-started hint used to key off total_sent, so anyone who had made a key
+// but not sent yet was told to "Create an API key" forever. Ask whether a key
+// actually exists. Best-effort: a failure here must not blank the dashboard.
+const { data: apiKeys } = await useAsyncData('app-dashboard-keys', () => listApiKeys().catch(() => []), {
+  default: () => [],
+})
+const hasApiKey = computed(() => (apiKeys.value?.length ?? 0) > 0)
+
 const { data: stats, pending } = await useAsyncData<OrgStats | null>(
   'app-dashboard-stats',
   () => fetchOrgStats(),
@@ -118,8 +126,13 @@ const hints = computed(() => {
     out.push({ text: 'Add and verify a sending domain to start sending mail.', to: '/app/domains', cta: 'Add domain' })
   if ((stats.value?.total_users ?? 0) <= 1)
     out.push({ text: 'Invite your teammates to collaborate in this workspace.', to: '/app/users', cta: 'Invite team' })
-  if ((stats.value?.total_sent ?? 0) === 0)
-    out.push({ text: 'Create an API key to send your first email programmatically.', to: '/app/api-keys', cta: 'Create key' })
+  if ((stats.value?.total_sent ?? 0) === 0) {
+    // Two different situations, two different next actions.
+    if (!hasApiKey.value)
+      out.push({ text: 'Create an API key to send your first email programmatically.', to: '/app/api-keys', cta: 'Create key' })
+    else
+      out.push({ text: 'You have an API key — send your first email with a copy-paste example.', to: '/app/developers', cta: 'View docs' })
+  }
   return out
 })
 </script>

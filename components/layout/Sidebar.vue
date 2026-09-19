@@ -37,44 +37,6 @@
                                 </NuxtLink>
                             </li>
 
-                            <h2 class="-mx-4 mb-1 flex items-center bg-white-light/30 px-7 py-3 font-extrabold uppercase dark:bg-dark dark:bg-opacity-[0.08]">
-                                <icon-minus class="hidden h-5 w-4 flex-none" />
-                                <span>Developers</span>
-                            </h2>
-
-                            <!-- Collapsible group, using the theme's own sub-menu
-                                 pattern. The developer pages used to replace the
-                                 whole sidebar with their own, which meant leaving
-                                 the section to reach anything else. -->
-                            <li class="menu nav-item">
-                                <button
-                                    type="button"
-                                    class="nav-link group w-full"
-                                    :class="{ active: devOpen }"
-                                    @click="devOpen = !devOpen"
-                                >
-                                    <div class="flex items-center">
-                                        <icon-code class="shrink-0 group-hover:!text-primary" />
-                                        <span class="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">API &amp; Integration</span>
-                                    </div>
-                                    <div :class="{ '-rotate-90 rtl:rotate-90': !devOpen }">
-                                        <icon-caret-down />
-                                    </div>
-                                </button>
-                                <VueCollapsible :is-open="devOpen">
-                                    <ul class="sub-menu text-gray-500">
-                                        <li v-for="item in developerItems" :key="item.to">
-                                            <NuxtLink :to="item.to" :class="{ active: isActive(item.to, item.exact) }" @click="toggleMobileMenu">
-                                                <div class="flex items-center gap-2">
-                                                    <component :is="item.icon" class="h-4 w-4 shrink-0" />
-                                                    <span>{{ item.label }}</span>
-                                                </div>
-                                            </NuxtLink>
-                                        </li>
-                                    </ul>
-                                </VueCollapsible>
-                            </li>
-
                             <template v-if="adminItems.length">
                                 <h2 class="-mx-4 mb-1 flex items-center bg-white-light/30 px-7 py-3 font-extrabold uppercase dark:bg-dark dark:bg-opacity-[0.08]">
                                     <icon-minus class="hidden h-5 w-4 flex-none" />
@@ -107,14 +69,6 @@
     import IconGlobe from '@/components/icon/icon-globe.vue';
     import IconMenuUsers from '@/components/icon/menu/icon-menu-users.vue';
     import IconCreditCard from '@/components/icon/icon-credit-card.vue';
-    import IconCode from '@/components/icon/icon-code.vue';
-    import IconBolt from '@/components/icon/icon-bolt.vue';
-    import IconLock from '@/components/icon/icon-lock.vue';
-    import IconRouter from '@/components/icon/icon-router.vue';
-    import IconListCheck from '@/components/icon/icon-list-check.vue';
-    import IconBook from '@/components/icon/icon-book.vue';
-    // Same component the theme's own sidebar uses for its sub-menus.
-    import VueCollapsible from 'vue-height-collapsible/vue3';
 
     const store = useAppStore();
     const route = useRoute();
@@ -122,24 +76,6 @@
 
     const isManager = computed(() => user.value?.role === 'owner' || user.value?.role === 'admin');
 
-    const developerItems = [
-        { to: '/app/developers', label: 'Quick Setup', icon: IconBolt, exact: true },
-        { to: '/app/developers/credentials', label: 'API Credentials', icon: IconLock, exact: false },
-        { to: '/app/developers/webhooks', label: 'Webhook Integration', icon: IconRouter, exact: false },
-        { to: '/app/developers/events', label: 'Webhook Events', icon: IconListCheck, exact: false },
-        { to: '/app/developers/reference', label: 'API Reference', icon: IconCode, exact: false },
-        { to: '/app/developers/documentation', label: 'API Documentation', icon: IconBook, exact: false },
-    ];
-
-    // Open by default while you are inside the section, so the current page is
-    // visible in context instead of hidden behind a collapsed group.
-    const devOpen = ref(route.path.startsWith('/app/developers'));
-    watch(
-        () => route.path,
-        (p) => {
-            if (p.startsWith('/app/developers')) devOpen.value = true;
-        },
-    );
 
     // API Keys, Webhooks and Settings live in the top-right user dropdown now.
     const primary = [
