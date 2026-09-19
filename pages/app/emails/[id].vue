@@ -1,5 +1,12 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
 import type { Email } from '@/composables/useEmails'
+// Imported, not named by string: `<component :is>` resolves a string against
+// registered components, and Nuxt's auto-import works off the template at build
+// time - so an icon named only in a runtime value renders as nothing.
+import IconGallery from '@/components/icon/icon-gallery.vue'
+import IconZipFile from '@/components/icon/icon-zip-file.vue'
+import IconTxtFile from '@/components/icon/icon-txt-file.vue'
 
 const route = useRoute()
 const id = computed(() => String(route.params.id))
@@ -258,10 +265,10 @@ const senderInitials = computed(() => {
   if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
   return (base.slice(0, 2) || '?').toUpperCase()
 })
-function attachmentIcon(contentType: string): string {
-  if (contentType?.startsWith('image/')) return 'icon-gallery'
-  if (contentType?.includes('zip')) return 'icon-zip-file'
-  return 'icon-txt-file'
+function attachmentIcon(contentType: string): Component {
+  if (contentType?.startsWith('image/')) return IconGallery
+  if (contentType?.includes('zip')) return IconZipFile
+  return IconTxtFile
 }
 </script>
 

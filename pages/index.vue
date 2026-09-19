@@ -1,5 +1,16 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
 import type { OrgPlan } from '@/composables/useBilling'
+// Imported rather than named by string: `<component :is>` resolves a string
+// against registered components, and Nuxt's auto-import works off the template
+// at build time, so a name that only exists in a runtime value resolves to
+// nothing and the tile renders empty.
+import IconGlobe from '@/components/icon/icon-globe.vue'
+import IconRouter from '@/components/icon/icon-router.vue'
+import IconOrb from '@/components/icon/icon-orb.vue'
+import IconCreditCard from '@/components/icon/icon-credit-card.vue'
+import IconLock from '@/components/icon/icon-lock.vue'
+import IconUsersGroup from '@/components/icon/icon-users-group.vue'
 
 definePageMeta({ layout: 'public' })
 useHead({ title: 'Orb — Transactional email, priced in Taka' })
@@ -12,38 +23,38 @@ const { plans, orderedPlans } = usePlans()
 const cycle = ref<'monthly' | 'yearly'>('monthly')
 
 interface Feature {
-  icon: string
+  icon: Component
   title: string
   body: string
 }
 const features: Feature[] = [
   {
-    icon: 'icon-globe',
+    icon: IconGlobe,
     title: 'Verified sending domains',
     body: 'Add your domain, drop in the DNS records we generate, and start sending. SPF, DKIM, and DMARC handled for you.',
   },
   {
-    icon: 'icon-router',
+    icon: IconRouter,
     title: 'Signed webhooks',
     body: 'Every event — delivered, bounced, complained — POSTed to your endpoint with an HMAC-SHA256 signature.',
   },
   {
-    icon: 'icon-orb',
+    icon: IconOrb,
     title: 'Real-time events',
     body: 'A live WebSocket connection pushes inbound mail, status changes, and stat updates to your dashboard instantly.',
   },
   {
-    icon: 'icon-credit-card',
+    icon: IconCreditCard,
     title: 'BDT billing via bKash',
     body: 'Pay in Taka through bKash and local gateways. No card juggling, no FX surprises, no surprise dollar invoices.',
   },
   {
-    icon: 'icon-lock',
+    icon: IconLock,
     title: '2FA & security',
     body: 'TOTP two-factor per account with org-wide enforcement on demand. Service-account API keys with one-time reveal.',
   },
   {
-    icon: 'icon-users-group',
+    icon: IconUsersGroup,
     title: 'Team roles',
     body: 'Invite teammates as owner, admin, or member. Granular roles keep production keys out of the wrong hands.',
   },
