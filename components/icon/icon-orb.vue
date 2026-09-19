@@ -1,10 +1,16 @@
 <template>
-    <!-- Orb brand mark: a solid orb core with a tilted orbit ring + satellite,
-         evoking a sphere ("orb") and messages in orbit. Inherits currentColor
-         so it renders white inside the primary-tinted logo tile. -->
+    <!-- Orb brand mark: a bold O - the name - broken at the send corner, with a
+         message leaving orbit. Both shapes are solid and heavily weighted so the
+         mark still reads at 16px, where the old thin rotated ellipse collapsed
+         into a blob. Inherits currentColor, so it renders white on the primary
+         tile and dark on light backgrounds without a second asset. -->
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="12" cy="12" rx="10" ry="4.3" transform="rotate(45 12 12)" stroke="currentColor" stroke-width="1.7" />
-        <circle cx="12" cy="12" r="4.3" fill="currentColor" />
-        <circle cx="19" cy="5" r="2.1" fill="currentColor" />
+        <path
+            d="M15.8 6.3 A6.45 6.45 0 1 0 17.7 8.55"
+            stroke="currentColor"
+            stroke-width="3.15"
+            stroke-linecap="round"
+        />
+        <circle cx="18.45" cy="5.55" r="2.4" fill="currentColor" />
     </svg>
 </template>
