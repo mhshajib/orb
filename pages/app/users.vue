@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Vue3Datatable from '@bhplugin/vue3-datatable'
 import type { User, UserRole, UserStatus } from '@/composables/useUsers'
 
 useHead({ title: 'Team' })
@@ -16,20 +17,28 @@ type Filter = 'all' | UserStatus
 const filter = ref<Filter>('all')
 const page = ref(1)
 const perPage = 20
+// Mirrors the API's default ordering so the header arrow matches the first load.
+const sortCol = ref('created_at')
+const sortDir = ref<'asc' | 'desc'>('desc')
 
 const { data, pending, error, refresh } = await useAsyncData(
   'team-users',
-  () => listUsers({ limit: perPage, offset: (page.value - 1) * perPage }),
-  { watch: [page] },
+  () => listUsers({
+    status: filter.value === 'all' ? undefined : filter.value,
+    sort: sortCol.value,
+    order: sortDir.value,
+    limit: perPage,
+    offset: (page.value - 1) * perPage,
+  }),
+  // Page and sort come from the table itself and refetch directly. The filter
+  // tabs are ours, and go through the watcher below so they can reset the page
+  // first without firing a second request.
+  { watch: [page, sortCol, sortDir] },
 )
 
-// Human team view excludes service (api_user) accounts.
-const humanUsers = computed<User[]>(() => (data.value?.items ?? []).filter(u => u.role !== 'api_user'))
-
-const filtered = computed<User[]>(() => humanUsers.value.filter((u) => {
-  if (filter.value !== 'all' && u.status !== filter.value) return false
-  return true
-}))
+// The API already drops service (api_user) accounts and applies the status
+// filter, so these are the rows to render as-is.
+const rows = computed<User[]>(() => data.value?.items ?? [])
 
 // Org's verified sending domains — a new user's mailbox lives on one of these.
 const { data: domainsData } = await useAsyncData('team-domains', () => listDomains())
@@ -62,10 +71,15 @@ const { limits: effectiveLimits, hasCustomLimits } = useEffectiveLimits()
 // Still shown as a badge next to the seat count.
 const currentPlanKey = computed(() => orgState.value?.plan ?? 'free')
 const userLimit = computed<number | null>(() => effectiveLimits.value?.users ?? null)
-const userCount = computed(() => data.value?.meta.total ?? humanUsers.value.length)
+// meta.total is the count of the *filtered* list, so it can't back a seat check
+// - viewing the "invited" tab would otherwise read as the org shrinking. The
+// org-wide counts are what the seat limit and the stat cards are about.
+const statusCounts = computed(() => data.value?.meta.counts ?? {})
+const orgWideTotal = computed(() => Object.values(statusCounts.value).reduce((n, v) => n + (v ?? 0), 0))
+const userCount = computed(() => (data.value?.meta.counts ? orgWideTotal.value : data.value?.meta.total ?? rows.value.length))
 const atUserLimit = computed(() => userLimit.value != null && userCount.value >= userLimit.value)
-const activeCount = computed(() => humanUsers.value.filter(u => u.status === 'active').length)
-const invitedCount = computed(() => humanUsers.value.filter(u => u.status === 'invited').length)
+const activeCount = computed(() => statusCounts.value.active ?? 0)
+const invitedCount = computed(() => statusCounts.value.invited ?? 0)
 const usagePct = computed(() => {
   if (userLimit.value == null || userLimit.value === 0) return userCount.value > 0 ? 100 : 0
   return Math.min(100, Math.round((userCount.value / userLimit.value) * 100))
@@ -359,6 +373,38 @@ const roleBadge: Record<UserRole, string> = {
   api_user: 'badge-outline-dark',
 }
 
+// A filter change re-shapes the list, so the old page number no longer points
+// anywhere meaningful. Resetting to page 1 refetches via the watcher above; if
+// we're already there, ask for the refresh directly - doing both unconditionally
+// would fire two requests for one click.
+watch(filter, () => {
+  if (page.value === 1)
+    refresh()
+  else
+    page.value = 1
+})
+
+// `sent_count` and `two_fa_enabled` aren't in the API's sortable whitelist, so
+// their headers stay inert rather than offering a control that does nothing.
+const cols = computed(() => [
+  { field: 'name', title: 'User' },
+  { field: 'role', title: 'Role' },
+  { field: 'status', title: 'Status' },
+  { field: 'two_fa_enabled', title: '2FA', sort: false },
+  { field: 'sent_count', title: 'Sent', sort: false, headerClass: 'ltr:text-right rtl:text-left' },
+  { field: 'actions', title: 'Actions', sort: false, headerClass: '!text-center' },
+])
+
+// Server mode: the table reports the page and ordering it wants, we refetch.
+// The plugin does not reset to page 1 on a sort change, so we follow its page
+// rather than overriding it - resetting here would leave the pagination UI
+// pointing at a page the table isn't showing.
+function onTableChange(e: { current_page?: number, sort_column?: string, sort_direction?: 'asc' | 'desc' }) {
+  page.value = Math.max(1, e?.current_page ?? 1)
+  sortCol.value = e?.sort_column || 'created_at'
+  sortDir.value = e?.sort_direction || 'desc'
+}
+
 const filterTabs: { value: Filter, label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'active', label: 'Active' },
@@ -496,7 +542,7 @@ function fmtNumber(n: number) {
         </div>
 
         <!-- Empty -->
-        <div v-else-if="!filtered.length" class="flex flex-col items-center gap-4 py-16 text-center">
+        <div v-else-if="!rows.length" class="flex flex-col items-center gap-4 py-16 text-center">
           <div class="grid h-16 w-16 place-content-center rounded-2xl bg-primary/10 text-primary">
             <icon-users-group class="h-8 w-8" />
           </div>
@@ -511,111 +557,108 @@ function fmtNumber(n: number) {
         </div>
 
         <!-- Rows -->
-        <div v-else class="table-responsive">
-          <table class="table-hover whitespace-nowrap">
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>2FA</th>
-                <th class="ltr:text-right rtl:text-left">Sent</th>
-                <th class="!text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="u in filtered" :key="u.id">
-                <td>
-                  <div class="flex min-w-0 items-center gap-3">
-                    <div class="grid h-10 w-10 shrink-0 place-content-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-white">
-                      <img v-if="u.avatar_url" :src="u.avatar_url" :alt="u.name || u.email" class="h-full w-full object-cover">
-                      <span v-else>{{ initials(u) }}</span>
-                    </div>
-                    <div class="min-w-0">
-                      <div class="truncate font-semibold text-dark dark:text-white-light">
-                        {{ u.name || u.email }}
-                        <span v-if="u.id === myId" class="ltr:ml-1 rtl:mr-1 text-xs font-normal text-white-dark">(you)</span>
-                      </div>
-                      <div class="truncate text-xs text-white-dark">{{ u.email }}</div>
-                    </div>
+        <div v-else class="datatable">
+          <Vue3Datatable
+            :rows="rows"
+            :columns="cols"
+            :total-rows="data?.meta.total ?? 0"
+            :is-server-mode="true"
+            :page-size="perPage"
+            :loading="pending"
+            :sortable="true"
+            :sort-column="sortCol"
+            :sort-direction="sortDir"
+            skin="table-hover whitespace-nowrap"
+            no-data-content="No users match this filter."
+            @change="onTableChange"
+          >
+            <template #name="row">
+              <div class="flex min-w-0 items-center gap-3">
+                <div class="grid h-10 w-10 shrink-0 place-content-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-white">
+                  <img v-if="row.value.avatar_url" :src="row.value.avatar_url" :alt="row.value.name || row.value.email" class="h-full w-full object-cover">
+                  <span v-else>{{ initials(row.value) }}</span>
+                </div>
+                <div class="min-w-0">
+                  <div class="truncate font-semibold text-dark dark:text-white-light">
+                    {{ row.value.name || row.value.email }}
+                    <span v-if="row.value.id === myId" class="ltr:ml-1 rtl:mr-1 text-xs font-normal text-white-dark">(you)</span>
                   </div>
-                </td>
-                <td>
-                  <span class="badge capitalize" :class="roleBadge[u.role]">{{ u.role }}</span>
-                </td>
-                <td>
-                  <span class="badge" :class="badgeFor(u.status).cls">{{ badgeFor(u.status).label }}</span>
-                </td>
-                <td>
-                  <span v-if="u.two_fa_enabled" class="inline-flex items-center gap-1 text-success">
-                    <icon-lock class="h-4 w-4" /> On
-                  </span>
-                  <span v-else class="inline-flex items-center gap-1 text-white-dark">
-                    <icon-lock-dots class="h-4 w-4" /> Off
-                  </span>
-                </td>
-                <td class="font-semibold ltr:text-right rtl:text-left">{{ fmtNumber(u.sent_count) }}</td>
-                <td>
-                  <div v-if="canManage(u)" class="flex justify-center">
-                    <Popper :placement="'bottom-end'" offsetDistance="4" class="align-middle">
-                      <button type="button" class="btn btn-outline-primary btn-sm gap-1">
-                        Manage
-                        <icon-caret-down class="h-4 w-4" />
-                      </button>
-                      <template #content="{ close }">
-                        <ul class="min-w-[12rem] whitespace-nowrap rounded-md border border-[#e0e6ed] bg-white py-1.5 text-sm font-semibold text-dark shadow-lg dark:border-[#1b2e4b] dark:bg-[#1b2e4b] dark:text-white-dark">
-                          <template v-if="myRole === 'owner' && u.role !== 'admin'">
-                            <li>
-                              <button type="button" class="flex w-full items-center gap-2 px-4 py-2 hover:bg-primary/10 hover:text-primary" @click="changeRole(u, 'admin'); close()">
-                                <icon-star class="h-4 w-4 shrink-0" /> Make admin
-                              </button>
-                            </li>
-                          </template>
-                          <li v-if="u.role !== 'member'">
-                            <button type="button" class="flex w-full items-center gap-2 px-4 py-2 hover:bg-primary/10 hover:text-primary" @click="changeRole(u, 'member'); close()">
-                              <icon-user class="h-4 w-4 shrink-0" /> Make member
-                            </button>
-                          </li>
-                          <li>
-                            <button type="button" class="flex w-full items-center gap-2 px-4 py-2 hover:bg-primary/10 hover:text-primary" @click="toggleSuspend(u); close()">
-                              <icon-minus-circle class="h-4 w-4 shrink-0" />
-                              {{ u.status === 'suspended' ? 'Reactivate' : 'Suspend' }}
-                            </button>
-                          </li>
-                          <li>
-                            <button type="button" class="flex w-full items-center gap-2 px-4 py-2 hover:bg-primary/10 hover:text-primary" @click="openSetPassword(u); close()">
-                              <icon-lock class="h-4 w-4 shrink-0" /> Set new password
-                            </button>
-                          </li>
-                          <li v-if="u.two_fa_enabled">
-                            <button type="button" class="flex w-full items-center gap-2 px-4 py-2 hover:bg-primary/10 hover:text-primary" @click="reset2FAFor(u); close()">
-                              <icon-refresh class="h-4 w-4 shrink-0" /> Reset 2FA
-                            </button>
-                          </li>
-                          <li class="my-1 border-t border-[#e0e6ed] dark:border-white-dark/10" />
-                          <li>
-                            <button type="button" class="flex w-full items-center gap-2 px-4 py-2 text-danger hover:bg-danger/10" @click="removeUser(u); close()">
-                              <icon-x-circle class="h-4 w-4 shrink-0" /> Remove user
-                            </button>
-                          </li>
-                        </ul>
-                      </template>
-                    </Popper>
-                  </div>
-                  <div v-else class="text-center text-white-dark">—</div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                  <div class="truncate text-xs text-white-dark">{{ row.value.email }}</div>
+                </div>
+              </div>
+            </template>
 
-        <!-- Pagination -->
-        <div v-if="data && data.meta.pages > 1" class="flex items-center justify-between border-t border-[#e0e6ed] p-4 text-sm text-white-dark dark:border-[#1b2e4b]">
-          <div>Page {{ data.meta.page }} of {{ data.meta.pages }} — {{ data.meta.total }} total</div>
-          <div class="flex gap-2">
-            <button type="button" class="btn btn-outline-primary btn-sm" :disabled="page <= 1" @click="page--">Prev</button>
-            <button type="button" class="btn btn-outline-primary btn-sm" :disabled="page >= data.meta.pages" @click="page++">Next</button>
-          </div>
+            <template #role="row">
+              <span class="badge capitalize" :class="roleBadge[row.value.role]">{{ row.value.role }}</span>
+            </template>
+
+            <template #status="row">
+              <span class="badge" :class="badgeFor(row.value.status).cls">{{ badgeFor(row.value.status).label }}</span>
+            </template>
+
+            <template #two_fa_enabled="row">
+              <span v-if="row.value.two_fa_enabled" class="inline-flex items-center gap-1 text-success">
+                <icon-lock class="h-4 w-4" /> On
+              </span>
+              <span v-else class="inline-flex items-center gap-1 text-white-dark">
+                <icon-lock-dots class="h-4 w-4" /> Off
+              </span>
+            </template>
+
+            <template #sent_count="row">
+              <div class="font-semibold ltr:text-right rtl:text-left">{{ fmtNumber(row.value.sent_count) }}</div>
+            </template>
+
+            <template #actions="row">
+              <div v-if="canManage(row.value)" class="flex justify-center">
+                <Popper :placement="'bottom-end'" offsetDistance="4" class="align-middle">
+                  <button type="button" class="btn btn-outline-primary btn-sm gap-1">
+                    Manage
+                    <icon-caret-down class="h-4 w-4" />
+                  </button>
+                  <template #content="{ close }">
+                    <ul class="min-w-[12rem] whitespace-nowrap rounded-md border border-[#e0e6ed] bg-white py-1.5 text-sm font-semibold text-dark shadow-lg dark:border-[#1b2e4b] dark:bg-[#1b2e4b] dark:text-white-dark">
+                      <template v-if="myRole === 'owner' && row.value.role !== 'admin'">
+                        <li>
+                          <button type="button" class="flex w-full items-center gap-2 px-4 py-2 hover:bg-primary/10 hover:text-primary" @click="changeRole(row.value, 'admin'); close()">
+                            <icon-star class="h-4 w-4 shrink-0" /> Make admin
+                          </button>
+                        </li>
+                      </template>
+                      <li v-if="row.value.role !== 'member'">
+                        <button type="button" class="flex w-full items-center gap-2 px-4 py-2 hover:bg-primary/10 hover:text-primary" @click="changeRole(row.value, 'member'); close()">
+                          <icon-user class="h-4 w-4 shrink-0" /> Make member
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button" class="flex w-full items-center gap-2 px-4 py-2 hover:bg-primary/10 hover:text-primary" @click="toggleSuspend(row.value); close()">
+                          <icon-minus-circle class="h-4 w-4 shrink-0" />
+                          {{ row.value.status === 'suspended' ? 'Reactivate' : 'Suspend' }}
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button" class="flex w-full items-center gap-2 px-4 py-2 hover:bg-primary/10 hover:text-primary" @click="openSetPassword(row.value); close()">
+                          <icon-lock class="h-4 w-4 shrink-0" /> Set new password
+                        </button>
+                      </li>
+                      <li v-if="row.value.two_fa_enabled">
+                        <button type="button" class="flex w-full items-center gap-2 px-4 py-2 hover:bg-primary/10 hover:text-primary" @click="reset2FAFor(row.value); close()">
+                          <icon-refresh class="h-4 w-4 shrink-0" /> Reset 2FA
+                        </button>
+                      </li>
+                      <li class="my-1 border-t border-[#e0e6ed] dark:border-white-dark/10" />
+                      <li>
+                        <button type="button" class="flex w-full items-center gap-2 px-4 py-2 text-danger hover:bg-danger/10" @click="removeUser(row.value); close()">
+                          <icon-x-circle class="h-4 w-4 shrink-0" /> Remove user
+                        </button>
+                      </li>
+                    </ul>
+                  </template>
+                </Popper>
+              </div>
+              <div v-else class="text-center text-white-dark">&mdash;</div>
+            </template>
+          </Vue3Datatable>
         </div>
       </div>
     </div>

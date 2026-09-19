@@ -202,14 +202,22 @@ export function usePlatform() {
   }
 
   // ── Orgs ──────────────────────────────────────────────────────────
-  async function listOrgs(opts: { search?: string; suspended?: boolean; limit?: number; offset?: number } = {}) {
+  async function listOrgs(opts: { search?: string; suspended?: boolean; sort?: string; order?: 'asc' | 'desc'; limit?: number; offset?: number } = {}) {
     const query: Record<string, string | number> = {}
     if (opts.search) query.search = opts.search
     if (typeof opts.suspended === 'boolean') query.suspended = String(opts.suspended)
+    // Sorting is the server's job: ordering the 50 rows already fetched answers
+    // a different question than ordering the org list. Unknown fields are
+    // ignored by the API rather than rejected.
+    if (opts.sort) query.sort = opts.sort
+    if (opts.order) query.order = opts.order
     if (opts.limit != null) query.limit = opts.limit
     if (opts.offset != null) query.offset = opts.offset
-    const res = await $fetch<{ data: PlatformOrg[] }>('/api/platform/orgs', { query })
-    return res.data
+    // The API returns meta.total and meta.pages; this used to drop them, which
+    // is why the list could only offer next/prev guesswork instead of real
+    // pagination. The datatable needs the total to render page numbers.
+    const res = await $fetch<{ data: PlatformOrg[], meta?: { total?: number } }>('/api/platform/orgs', { query })
+    return { rows: res.data ?? [], total: res.meta?.total ?? (res.data?.length ?? 0) }
   }
 
   async function getOrg(orgId: string) {

@@ -23,6 +23,9 @@ export interface UserListMeta {
   page: number
   per_page: number
   pages: number
+  // Org-wide breakdown per status, independent of the current filter and page.
+  // The stat cards need this: a paged list can't be counted in the browser.
+  counts?: Partial<Record<UserStatus, number>>
 }
 
 const fetcher = () => (import.meta.server ? useRequestFetch() : $fetch)
@@ -42,8 +45,22 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<vo
   await fetcher()(`/api/users/${id}`, { method: 'PUT', body: input })
 }
 
-export async function listUsers(opts: { limit?: number, offset?: number } = {}): Promise<{ items: User[], meta: UserListMeta }> {
-  const query: Record<string, number> = {}
+export interface ListUsersOptions {
+  status?: UserStatus
+  sort?: string
+  order?: 'asc' | 'desc'
+  limit?: number
+  offset?: number
+}
+
+export async function listUsers(opts: ListUsersOptions = {}): Promise<{ items: User[], meta: UserListMeta }> {
+  const query: Record<string, string | number> = {}
+  // status and sort go to the API rather than being applied to the rows we get
+  // back: filtering or ordering one page of 20 is not the same answer as
+  // filtering or ordering the team.
+  if (opts.status) query.status = opts.status
+  if (opts.sort) query.sort = opts.sort
+  if (opts.order) query.order = opts.order
   if (opts.limit) query.limit = opts.limit
   if (opts.offset) query.offset = opts.offset
   const res = await fetcher()<{ data: User[], meta: UserListMeta }>('/api/users', { query })

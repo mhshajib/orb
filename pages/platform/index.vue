@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Vue3Datatable from '@bhplugin/vue3-datatable'
 import type { PlatformOrg, ResendUsage } from '~/composables/usePlatform'
 
 definePageMeta({ layout: 'platform' })
@@ -24,8 +25,13 @@ const search = ref('')
 const status = ref<'all' | 'active' | 'suspended'>('all')
 const PER_PAGE = 20
 const page = ref(0)
+// Mirrors the API's default ordering so the header arrow matches the first load
+// instead of showing the list as unsorted.
+const sortCol = ref('created_at')
+const sortDir = ref<'asc' | 'desc'>('desc')
 
 const orgs = ref<PlatformOrg[]>([])
+const total = ref(0)
 const loading = ref(false)
 const error = ref('')
 const busyId = ref<string | null>(null)
@@ -34,7 +40,9 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const opts: { search?: string, suspended?: boolean, limit: number, offset: number } = {
+    const opts: { search?: string, suspended?: boolean, sort: string, order: 'asc' | 'desc', limit: number, offset: number } = {
+      sort: sortCol.value,
+      order: sortDir.value,
       limit: PER_PAGE,
       offset: page.value * PER_PAGE,
     }
@@ -44,15 +52,47 @@ async function load() {
       opts.suspended = false
     else if (status.value === 'suspended')
       opts.suspended = true
-    orgs.value = await listOrgs(opts)
+    const res = await listOrgs(opts)
+    orgs.value = res.rows
+    total.value = res.total
   }
   catch (e) {
     error.value = errMsg(e, 'Failed to load organizations')
     orgs.value = []
+    total.value = 0
   }
   finally {
     loading.value = false
   }
+}
+
+// Columns for the datatable. Sorting runs on the server; `enforce_2fa` is not
+// in the API's sortable whitelist, so its header stays inert rather than
+// offering a control that quietly does nothing.
+const cols = computed(() => {
+  const c: any[] = [
+    { field: 'name', title: 'Name' },
+    { field: 'slug', title: 'Slug' },
+    { field: 'plan', title: 'Plan' },
+    { field: 'enforce_2fa', title: '2FA', sort: false },
+    { field: 'suspended', title: 'Status' },
+    { field: 'created_at', title: 'Created' },
+  ]
+  if (canMutate)
+    c.push({ field: 'actions', title: 'Actions', sort: false, headerClass: 'text-center' })
+  return c
+})
+
+// Server mode: the datatable reports the page and ordering it wants and we
+// refetch, so the row count stays honest instead of paging through whatever
+// happens to be loaded. The plugin does not reset to page 1 on a sort change,
+// so we follow its page rather than overriding it - resetting here would leave
+// the pagination UI pointing at a page the table isn't showing.
+function onTableChange(e: { current_page?: number, sort_column?: string, sort_direction?: 'asc' | 'desc' }) {
+  page.value = Math.max(0, (e?.current_page ?? 1) - 1)
+  sortCol.value = e?.sort_column || 'created_at'
+  sortDir.value = e?.sort_direction || 'desc'
+  load()
 }
 
 // Reset to first page whenever filters change, then reload.
@@ -60,7 +100,6 @@ watch([search, status], () => {
   page.value = 0
   load()
 })
-watch(page, load)
 
 onMounted(load)
 
@@ -195,94 +234,72 @@ async function onUnsuspend(org: PlatformOrg) {
         {{ error }}
       </div>
 
-      <div v-else class="table-responsive">
-        <table class="table-hover">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Slug</th>
-              <th>Plan</th>
-              <th>2FA</th>
-              <th>Status</th>
-              <th>Created</th>
-              <th v-if="canMutate" class="text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="loading">
-              <td :colspan="canMutate ? 7 : 6" class="text-center text-white-dark">Loading…</td>
-            </tr>
-            <tr v-else-if="!orgs.length">
-              <td :colspan="canMutate ? 7 : 6" class="text-center text-white-dark">No organizations found.</td>
-            </tr>
-            <tr v-for="org in orgs" v-else :key="org.id">
-              <td>
-                <NuxtLink :to="`/platform/orgs/${org.id}`" class="flex items-center gap-2 font-semibold text-primary hover:underline">
-                  {{ org.name }}
-                  <span v-if="org.is_system" class="badge bg-warning">System</span>
-                </NuxtLink>
-              </td>
-              <td class="font-mono text-xs text-white-dark">{{ org.slug }}</td>
-              <td><span :class="planBadge[org.plan] || 'badge bg-secondary'" class="capitalize">{{ org.plan }}</span></td>
-              <td>
-                <span v-if="org.enforce_2fa" class="badge bg-success">Enforced</span>
-                <span v-else class="text-white-dark">—</span>
-              </td>
-              <td>
-                <span v-if="org.suspended" class="badge bg-danger">Suspended</span>
-                <span v-else class="badge bg-success">Active</span>
-              </td>
-              <td class="whitespace-nowrap text-white-dark">{{ fmtDate(org.created_at) }}</td>
-              <td v-if="canMutate" class="text-center">
-                <template v-if="!org.is_system">
-                  <button
-                    v-if="!org.suspended"
-                    type="button"
-                    class="btn btn-danger btn-sm"
-                    :disabled="busyId === org.id"
-                    @click="onSuspend(org)"
-                  >
-                    Suspend
-                  </button>
-                  <button
-                    v-else
-                    type="button"
-                    class="btn btn-success btn-sm"
-                    :disabled="busyId === org.id"
-                    @click="onUnsuspend(org)"
-                  >
-                    Unsuspend
-                  </button>
-                </template>
-                <span v-else class="text-xs text-white-dark">—</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-else class="datatable">
+        <Vue3Datatable
+          :rows="orgs"
+          :columns="cols"
+          :total-rows="total"
+          :is-server-mode="true"
+          :page-size="PER_PAGE"
+          :sort-column="sortCol"
+          :sort-direction="sortDir"
+          :loading="loading"
+          :sortable="true"
+          skin="whitespace-nowrap bh-table-hover"
+          no-data-content="No organizations found."
+          @change="onTableChange"
+        >
+          <template #name="row">
+            <NuxtLink :to="`/platform/orgs/${row.value.id}`" class="flex items-center gap-2 font-semibold text-primary hover:underline">
+              {{ row.value.name }}
+              <span v-if="row.value.is_system" class="badge bg-warning">System</span>
+            </NuxtLink>
+          </template>
+          <template #slug="row">
+            <span class="font-mono text-xs text-white-dark">{{ row.value.slug }}</span>
+          </template>
+          <template #plan="row">
+            <span :class="planBadge[row.value.plan] || 'badge bg-secondary'" class="capitalize">{{ row.value.plan }}</span>
+          </template>
+          <template #enforce_2fa="row">
+            <span v-if="row.value.enforce_2fa" class="badge bg-success">Enforced</span>
+            <span v-else class="text-white-dark">&mdash;</span>
+          </template>
+          <template #suspended="row">
+            <span v-if="row.value.suspended" class="badge bg-danger">Suspended</span>
+            <span v-else class="badge bg-success">Active</span>
+          </template>
+          <template #created_at="row">
+            <span class="text-white-dark">{{ fmtDate(row.value.created_at) }}</span>
+          </template>
+          <template #actions="row">
+            <div class="text-center">
+              <template v-if="!row.value.is_system">
+                <button
+                  v-if="!row.value.suspended"
+                  type="button"
+                  class="btn btn-danger btn-sm"
+                  :disabled="busyId === row.value.id"
+                  @click="onSuspend(row.value)"
+                >
+                  Suspend
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="btn btn-success btn-sm"
+                  :disabled="busyId === row.value.id"
+                  @click="onUnsuspend(row.value)"
+                >
+                  Unsuspend
+                </button>
+              </template>
+              <span v-else class="text-xs text-white-dark">&mdash;</span>
+            </div>
+          </template>
+        </Vue3Datatable>
       </div>
 
-      <!-- Pagination -->
-      <div class="mt-4 flex items-center justify-between">
-        <span class="text-xs text-white-dark">Page {{ page + 1 }}</span>
-        <div class="flex gap-2">
-          <button
-            type="button"
-            class="btn btn-outline-primary btn-sm"
-            :disabled="page === 0 || loading"
-            @click="page--"
-          >
-            Previous
-          </button>
-          <button
-            type="button"
-            class="btn btn-outline-primary btn-sm"
-            :disabled="orgs.length < PER_PAGE || loading"
-            @click="page++"
-          >
-            Next
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 </template>
