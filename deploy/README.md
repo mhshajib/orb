@@ -14,12 +14,16 @@ supervisor, behind nginx.
 Drone builds; the VPS only receives the finished `.output`. That box has 2 GB of
 RAM and serves live traffic, so a Nuxt build must never run there.
 
-## Not to be confused with github.com/mhshajib/orb
+## Not to be confused with github.com/mhshajib/orb_old
 
-That repo is a Nuxt 4 + shadcn **rewrite**. It has Google OAuth this tree does
-not, and it is missing the whole platform/staff console this tree has. Its
-pipeline deploys only on a manual promote for exactly that reason. **This** repo
-is the one that owns the live site.
+`orb_old` is a Nuxt 4 + shadcn **rewrite** that was never deployed. It has
+Google OAuth this tree does not, and it is missing the whole platform/staff
+console this tree has (10 pages, 5 server routes, ~3,700 lines). Its pipeline is
+disabled so it cannot reach production.
+
+**This** repo owns the live site. It is the tree that was previously called
+`orb-new` locally and was deployed by hand; the naming was straightened out on
+2026-09-19 so that the repo named `orb` is the one actually serving orb.bd.
 
 ## What is where
 

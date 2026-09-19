@@ -25,9 +25,9 @@ steps:
       - npm run build
       - test -f .output/server/index.mjs || (echo "ERROR build produced no nitro server"; exit 1)
       - test -d .output/public || (echo "ERROR build produced no public assets"; exit 1)
-      # The platform/staff console is the thing this codebase has and the rewrite
-      # does not. If a build ever stops producing it, that is a regression worth
-      # failing on rather than quietly shipping.
+      # The platform/staff console is the thing this codebase has and the retired
+      # orb_old rewrite does not. If a build ever stops producing it, that is a
+      # regression worth failing on rather than quietly shipping.
       - test -f .output/server/chunks/routes/api/platform/auth/login.post.mjs || (echo "ERROR build is missing the platform console routes"; exit 1)
 
   # All deploy logic lives in deploy/ci-deploy.sh. Keeping shell out of this file
