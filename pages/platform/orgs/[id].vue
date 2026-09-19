@@ -506,29 +506,33 @@ async function onToggleUser(u: PlatformOrgUser) {
           <div class="grid gap-4 sm:grid-cols-3">
             <div>
               <label class="mb-1.5 block text-sm font-semibold">Emails / month</label>
-              <input v-model.number="limitsForm.emails_per_month" type="number" step="1" class="form-input" placeholder="inherit" />
+              <input v-model.number="limitsForm.emails_per_month" type="number" min="-1" step="1" class="form-input" placeholder="inherit" />
             </div>
             <div>
               <label class="mb-1.5 block text-sm font-semibold">Users</label>
-              <input v-model.number="limitsForm.users" type="number" step="1" class="form-input" placeholder="inherit" />
+              <input v-model.number="limitsForm.users" type="number" min="-1" step="1" class="form-input" placeholder="inherit" />
             </div>
             <div>
               <label class="mb-1.5 block text-sm font-semibold">Domains</label>
-              <input v-model.number="limitsForm.domains" type="number" step="1" class="form-input" placeholder="inherit" />
+              <input v-model.number="limitsForm.domains" type="number" min="-1" step="1" class="form-input" placeholder="inherit" />
             </div>
             <div>
               <label class="mb-1.5 block text-sm font-semibold">Webhooks</label>
-              <input v-model.number="limitsForm.webhooks" type="number" step="1" class="form-input" placeholder="inherit" />
+              <input v-model.number="limitsForm.webhooks" type="number" min="-1" step="1" class="form-input" placeholder="inherit" />
             </div>
             <div>
               <label class="mb-1.5 block text-sm font-semibold">Retention (days)</label>
-              <input v-model.number="limitsForm.retention_days" type="number" step="1" class="form-input" placeholder="inherit" />
+              <input v-model.number="limitsForm.retention_days" type="number" min="-1" step="1" class="form-input" placeholder="inherit" />
             </div>
             <div>
               <label class="mb-1.5 block text-sm font-semibold">Monthly price (৳)</label>
               <input v-model.number="limitsForm.monthly_bdt" type="number" min="0" step="1" class="form-input" placeholder="inherit" />
             </div>
           </div>
+          <p class="text-xs text-white-dark">
+            Blank inherits from the plan. <span class="font-mono font-semibold">-1</span> is unlimited, <span class="font-mono font-semibold">0</span> means none allowed.
+            Fields you leave blank are left exactly as they are.
+          </p>
           <div>
             <label class="mb-1.5 block text-sm font-semibold">Attachments over 2 MB</label>
             <select v-model="limitsForm.attachments_over_2m" class="form-select w-auto">

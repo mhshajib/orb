@@ -206,7 +206,14 @@ async function onSave() {
             </div>
             <div>
               <label class="mb-1.5 block font-semibold">Analytics</label>
-              <input v-model="form.analytics" type="text" class="form-input" />
+              <!-- A free-text box here is how a plan once got analytics="",
+                   which is not a tier the app understands. The API rejects it
+                   now; this stops it being typeable in the first place. -->
+              <select v-model="form.analytics" class="form-select">
+                <option value="none">None</option>
+                <option value="basic">Basic</option>
+                <option value="full">Full</option>
+              </select>
             </div>
           </div>
           <div>
@@ -229,23 +236,23 @@ async function onSave() {
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
               <label class="mb-1.5 block font-semibold">Emails / month</label>
-              <input v-model.number="form.emails_per_month" type="number" step="1" class="form-input" />
+              <input v-model.number="form.emails_per_month" type="number" min="-1" step="1" class="form-input" />
             </div>
             <div>
               <label class="mb-1.5 block font-semibold">Users</label>
-              <input v-model.number="form.users" type="number" step="1" class="form-input" />
+              <input v-model.number="form.users" type="number" min="-1" step="1" class="form-input" />
             </div>
             <div>
               <label class="mb-1.5 block font-semibold">Domains</label>
-              <input v-model.number="form.domains" type="number" step="1" class="form-input" />
+              <input v-model.number="form.domains" type="number" min="-1" step="1" class="form-input" />
             </div>
             <div>
               <label class="mb-1.5 block font-semibold">Webhooks</label>
-              <input v-model.number="form.webhooks" type="number" step="1" class="form-input" />
+              <input v-model.number="form.webhooks" type="number" min="-1" step="1" class="form-input" />
             </div>
             <div>
               <label class="mb-1.5 block font-semibold">Retention (days)</label>
-              <input v-model.number="form.retention_days" type="number" step="1" class="form-input" />
+              <input v-model.number="form.retention_days" type="number" min="-1" step="1" class="form-input" />
             </div>
           </div>
 
