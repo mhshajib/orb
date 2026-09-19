@@ -19,27 +19,38 @@ const loading = ref(false)
 const error = ref('')
 const done = ref(false)
 
+// Mirrors domain.NormalizeSlug + domain.ValidateSlug on the server. The server
+// is the authority; this just keeps the field from showing something it will
+// reject. Slice before stripping hyphens, so truncating to 40 can't leave a
+// trailing one that the server then refuses.
 function slugify(s: string) {
-  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').slice(0, 40).replace(/^-+|-+$/g, '')
 }
+const MIN_HANDLE = 3
 // Auto-suggest the handle from the org name until the user edits it directly.
 watch(orgName, (v) => { if (!handleEdited.value) handle.value = slugify(v) })
 
 // Live availability check on the chosen handle.
 const checking = ref(false)
 const available = ref<boolean | null>(null)
+// Why it's unavailable: 'taken' | 'reserved' | 'invalid'. The handle becomes a
+// real mailbox on an Orb-owned domain, so some names are refused outright —
+// telling the user which of the two it is saves them guessing.
+const reason = ref('')
 let timer: ReturnType<typeof setTimeout> | null = null
 watch(handle, (v) => {
   const clean = slugify(v)
   if (clean !== v) { handle.value = clean; return }
   available.value = null
+  reason.value = ''
   if (timer) clearTimeout(timer)
-  if (!clean) return
+  if (!clean || clean.length < MIN_HANDLE) return
   timer = setTimeout(async () => {
     checking.value = true
     try {
-      const r = await $fetch<{ data: { available: boolean } }>('/api/auth/check-slug', { query: { slug: clean } })
+      const r = await $fetch<{ data: { available: boolean, reason?: string } }>('/api/auth/check-slug', { query: { slug: clean } })
       available.value = r.data.available
+      reason.value = r.data.reason ?? ''
     }
     catch { available.value = null }
     finally { checking.value = false }
@@ -153,7 +164,10 @@ async function resend() {
                                 <p class="mt-1 text-xs" :class="available === false ? 'text-danger' : available === true ? 'text-success' : 'text-white-dark'">
                                     <template v-if="checking">Checking availability…</template>
                                     <template v-else-if="available === true">✓ {{ orbEmail }} is available — send from this address on the free plan.</template>
+                                    <template v-else-if="available === false && reason === 'reserved'">✕ That handle is reserved — it would look like an address from Orb itself.</template>
+                                    <template v-else-if="available === false && reason === 'invalid'">✕ Use {{ MIN_HANDLE }}–40 letters, numbers or hyphens.</template>
                                     <template v-else-if="available === false">✕ That handle is taken — try another.</template>
+                                    <template v-else-if="handle && handle.length < MIN_HANDLE">Handles are at least {{ MIN_HANDLE }} characters.</template>
                                     <template v-else>You'll send from this address for free (no domain setup). Add your own domain later on a paid plan.</template>
                                 </p>
                             </div>
