@@ -115,9 +115,9 @@ function nextPath() {
 
                         <form class="space-y-5 dark:text-white" @submit.prevent="onSubmit">
                             <div>
-                                <label for="Email">Email</label>
+                                <label for="Email">Email or Orb address</label>
                                 <div class="relative text-white-dark">
-                                    <input id="Email" v-model="email" type="email" autocomplete="email" placeholder="Enter Email" class="form-input ps-10 placeholder:text-white-dark" required />
+                                    <input id="Email" v-model="email" type="email" autocomplete="email" placeholder="you@company.com" class="form-input ps-10 placeholder:text-white-dark" required />
                                     <span class="absolute start-4 top-1/2 -translate-y-1/2"><icon-mail :fill="true" /></span>
                                 </div>
                             </div>

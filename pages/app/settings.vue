@@ -50,6 +50,25 @@ if (!orgState.value) await fetchOrg()
 // ---------- Profile (name) ----------
 const profileName = ref('')
 const profileDirty = computed(() => self.value && self.value.name !== profileName.value)
+
+const sharedDomain = (useRuntimeConfig().public.sharedSendingDomain as string) || 'send.orb.bd'
+
+// Primary first, then the rest. `addresses` may be absent on a record the
+// backfill has not touched, so fall back to the single email rather than
+// rendering an empty list.
+const myAddresses = computed(() => {
+  const primary = (self.value?.email ?? '').toLowerCase()
+  const all = self.value?.addresses?.length ? self.value.addresses : (primary ? [primary] : [])
+  const seen = new Set<string>()
+  const rows: { address: string, primary: boolean, orb: boolean }[] = []
+  for (const raw of [primary, ...all]) {
+    const a = (raw ?? '').toLowerCase().trim()
+    if (!a || seen.has(a)) continue
+    seen.add(a)
+    rows.push({ address: a, primary: a === primary, orb: a.endsWith(`@${sharedDomain}`) })
+  }
+  return rows
+})
 const profileSaving = ref(false)
 watchEffect(() => { if (self.value) profileName.value = self.value.name })
 
@@ -384,10 +403,23 @@ async function saveOrg() {
                                             <input id="name" v-model="profileName" type="text" placeholder="Your name" class="form-input" />
                                         </div>
                                         <div>
-                                            <label for="email">Email</label>
-                                            <input id="email" :value="self?.email" type="email" class="form-input bg-[#f1f2f3] text-white-dark dark:bg-[#1b2e4b]" disabled />
+                                            <label>Your addresses</label>
+                                            <!-- Every address, not just the primary. An account answers to
+                                                 all of them, and saying so is the point: verifying a domain
+                                                 used to silently replace the one you signed up with. -->
+                                            <div class="space-y-1.5">
+                                                <div
+                                                    v-for="a in myAddresses"
+                                                    :key="a.address"
+                                                    class="flex flex-wrap items-center gap-2 rounded-md border border-white-light px-3 py-2 dark:border-[#1b2e4b]"
+                                                >
+                                                    <span class="min-w-0 flex-1 truncate text-sm">{{ a.address }}</span>
+                                                    <span v-if="a.primary" class="badge inline-flex shrink-0 items-center bg-primary">Primary</span>
+                                                    <span v-else-if="a.orb" class="badge inline-flex shrink-0 items-center badge-outline-primary">Orb address</span>
+                                                </div>
+                                            </div>
                                             <p class="mt-1 text-xs text-white-dark">
-                                                Email is fixed.<span v-if="self?.auth_provider === 'google'"> You signed in with Google.</span>
+                                                You can sign in with any of these.<span v-if="self?.auth_provider === 'google'"> You signed in with Google.</span>
                                             </p>
                                         </div>
                                         <div>

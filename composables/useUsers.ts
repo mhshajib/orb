@@ -6,6 +6,8 @@ export interface User {
   id: string
   org_id: string
   email: string
+  /** Every address this account answers to; any of them signs in. */
+  addresses?: string[]
   name: string
   avatar_url?: string
   auth_provider: AuthProvider
