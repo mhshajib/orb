@@ -81,13 +81,16 @@
     const primary = [
         { to: '/app', label: 'Dashboard', icon: IconMenuDashboard, exact: true },
         { to: '/app/emails', label: 'Emails', icon: IconMenuMailbox, exact: false },
-        { to: '/app/domains', label: 'Domains', icon: IconGlobe, exact: false },
     ];
 
     // Manager-only. Empty for members → the Administration header is hidden.
     const adminItems = computed(() => {
         const items: any[] = [];
         if (isManager.value) {
+            // Sending domains are org infrastructure - adding or deleting one
+            // changes what everybody can send from - so they sit here rather
+            // than in the primary nav.
+            items.push({ to: '/app/domains', label: 'Domains', icon: IconGlobe, exact: false });
             items.push({ to: '/app/users', label: 'Team', icon: IconMenuUsers, exact: false });
             items.push({ to: '/app/billing', label: 'Billing', icon: IconCreditCard, exact: false });
         }

@@ -1,6 +1,10 @@
 // API keys + webhooks are now per-user (any member manages their own), so they
-// are NOT manager-only. Team + billing remain owner/admin only.
-const MANAGER_ONLY = ['/app/users', '/app/billing']
+// are NOT manager-only. Team, billing and sending domains are owner/admin only.
+//
+// This list is a convenience, not the enforcement: the matching endpoints check
+// the role themselves, because an API key carries its owner's role and would
+// otherwise walk straight past anything the browser merely hides.
+const MANAGER_ONLY = ['/app/users', '/app/billing', '/app/domains']
 
 export default defineNuxtRouteMiddleware(async (to) => {
   const path = to.path

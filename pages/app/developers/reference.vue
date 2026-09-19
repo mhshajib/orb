@@ -12,10 +12,10 @@
                     <h2 class="text-sm font-bold uppercase tracking-wide dark:text-white-light">Endpoints</h2>
                 </div>
                 <div class="max-h-[70vh] overflow-y-auto p-3">
-                    <div v-for="group in API_GROUPS" :key="group" class="mb-4 last:mb-0">
+                    <div v-for="group in groups" :key="group" class="mb-4 last:mb-0">
                         <h3 class="mb-1.5 px-2 text-[11px] font-bold uppercase tracking-wide text-white-dark">{{ group }}</h3>
                         <ul class="space-y-0.5">
-                            <li v-for="e in endpointsByGroup(group)" :key="e.id">
+                            <li v-for="e in endpointsByGroup(group, endpoints)" :key="e.id">
                                 <button
                                     type="button"
                                     class="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs transition duration-300"
@@ -40,6 +40,7 @@
                     <div class="mt-2 flex flex-wrap items-center gap-2 rounded-md bg-[#fbfbfb] px-3 py-2 dark:bg-[#1a2941]">
                         <OrbMethodBadge :method="selected.method" />
                         <code class="min-w-0 flex-1 truncate font-mono text-sm">{{ selected.path }}</code>
+                        <span v-if="selected.managerOnly" class="badge badge-outline-warning shrink-0">Owner/admin</span>
                         <OrbCopyButton :value="API_BASE + selected.path" />
                     </div>
                     <p class="mt-3 text-white-dark">{{ selected.summary }}</p>
@@ -107,15 +108,25 @@
 </template>
 
 <script lang="ts" setup>
-    import { API_BASE, API_GROUPS, API_ENDPOINTS, endpointsByGroup, findEndpoint } from '@/utils/apiSpec';
+    import { API_BASE, endpointsByGroup, groupsFor, visibleEndpoints } from '@/utils/apiSpec';
     import { CODE_LANGUAGES, codeSample } from '@/utils/codeSamples';
 
     useHead({ title: 'API Reference' });
 
     const { error: toastError } = useToast();
 
-    const selectedId = ref(API_ENDPOINTS[0].id);
-    const selected = computed(() => findEndpoint(selectedId.value));
+    // Domains and the org-wide usage counters need owner/admin. A member's API
+    // key carries the member role, so listing those here would only hand them
+    // samples that answer 403 - and "Try it" runs as the caller, so it would
+    // fail too. Hide them rather than document a lie.
+    const { user } = useAuth();
+    const isManager = computed(() => user.value?.role === 'owner' || user.value?.role === 'admin');
+    const endpoints = computed(() => visibleEndpoints(isManager.value));
+    const groups = computed(() => groupsFor(endpoints.value));
+
+    const selectedId = ref(endpoints.value[0].id);
+    // Also the guard against deep-linking to a hidden endpoint.
+    const selected = computed(() => endpoints.value.find((e) => e.id === selectedId.value));
     const language = ref('shell');
     const hljsLang = computed(() => CODE_LANGUAGES.find((l) => l.id === language.value)?.hljs ?? 'bash');
 

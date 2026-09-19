@@ -41,6 +41,13 @@ export interface ApiEndpoint {
   responseStatus: number
   /** True when the endpoint accepts multipart (file upload) as well as JSON. */
   multipart?: boolean
+  /**
+   * Requires owner/admin. An API key carries the role of the user who created
+   * it, so a member's key gets 403 here just as the member would in the UI —
+   * which is why these are hidden from members rather than shown as samples
+   * that cannot work.
+   */
+  managerOnly?: boolean
 }
 
 export const API_BASE = 'https://api.orb.bd'
@@ -146,6 +153,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
   // ── Domains ───────────────────────────────────────────────────────────────
   {
     id: 'list-domains',
+    managerOnly: true,
     group: 'Domains',
     title: 'List sending domains',
     method: 'GET',
@@ -158,6 +166,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
   },
   {
     id: 'add-domain',
+    managerOnly: true,
     group: 'Domains',
     title: 'Add a sending domain',
     method: 'POST',
@@ -181,6 +190,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
   },
   {
     id: 'verify-domain',
+    managerOnly: true,
     group: 'Domains',
     title: 'Verify a domain',
     method: 'POST',
@@ -286,6 +296,7 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
   },
   {
     id: 'get-stats',
+    managerOnly: true,
     group: 'Account',
     title: 'Retrieve usage',
     method: 'GET',
@@ -312,8 +323,18 @@ export const API_ENDPOINTS: ApiEndpoint[] = [
 
 export const API_GROUPS = [...new Set(API_ENDPOINTS.map(e => e.group))]
 
-export function endpointsByGroup(group: string) {
-  return API_ENDPOINTS.filter(e => e.group === group)
+/** The endpoints a given role can actually call. */
+export function visibleEndpoints(isManager: boolean) {
+  return isManager ? API_ENDPOINTS : API_ENDPOINTS.filter(e => !e.managerOnly)
+}
+
+/** Groups that still have at least one endpoint left after filtering. */
+export function groupsFor(endpoints: ApiEndpoint[]) {
+  return [...new Set(endpoints.map(e => e.group))]
+}
+
+export function endpointsByGroup(group: string, endpoints: ApiEndpoint[] = API_ENDPOINTS) {
+  return endpoints.filter(e => e.group === group)
 }
 
 export function findEndpoint(id: string) {

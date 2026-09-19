@@ -109,8 +109,13 @@ export function useEffectiveLimits() {
       n == null ? 'Unlimited' : `${n} days`)
 
     // Price is the one row where a bigger number is the worse outcome.
+    //
+    // The zero check is not cosmetic: GET /api/orgs/me blanks the negotiated
+    // price for non-managers, so a member reads 0 here. Billing is the only
+    // page that renders this row and is owner/admin at both the route and the
+    // API, but a redacted price must never be presented as a real one.
     const customMonthly = Math.round(c.monthly_price_paisa / 100)
-    if (base.monthlyBDT != null && base.monthlyBDT !== customMonthly) {
+    if (customMonthly > 0 && base.monthlyBDT != null && base.monthlyBDT !== customMonthly) {
       out.push({
         key: 'price',
         label: 'Monthly price',

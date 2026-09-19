@@ -10,7 +10,7 @@
                     <a :href="`#${s.id}`" class="block rounded-md px-2 py-1.5 transition duration-300 hover:bg-primary-light hover:text-primary dark:hover:bg-[#1b2e4b]">{{ s.label }}</a>
                 </li>
                 <li class="!mt-3 px-2 text-[11px] font-bold uppercase tracking-wide text-white-dark">Endpoints</li>
-                <li v-for="group in API_GROUPS" :key="group">
+                <li v-for="group in groups" :key="group">
                     <a :href="`#group-${slug(group)}`" class="block rounded-md px-2 py-1.5 transition duration-300 hover:bg-primary-light hover:text-primary dark:hover:bg-[#1b2e4b]">{{ group }}</a>
                 </li>
             </ul>
@@ -58,12 +58,13 @@
             </section>
 
             <!-- Endpoints, grouped -->
-            <section v-for="group in API_GROUPS" :id="`group-${slug(group)}`" :key="group" class="mt-8">
+            <section v-for="group in groups" :id="`group-${slug(group)}`" :key="group" class="mt-8">
                 <h2 class="mb-3 text-lg font-bold dark:text-white-light">{{ group }}</h2>
-                <article v-for="e in endpointsByGroup(group)" :id="e.id" :key="e.id" class="panel mb-4">
+                <article v-for="e in endpointsByGroup(group, endpoints)" :id="e.id" :key="e.id" class="panel mb-4">
                     <div class="flex flex-wrap items-center gap-2 rounded-md bg-[#fbfbfb] px-3 py-2 dark:bg-[#1a2941]">
                         <OrbMethodBadge :method="e.method" />
                         <code class="min-w-0 flex-1 truncate font-mono text-sm">{{ e.path }}</code>
+                        <span v-if="e.managerOnly" class="badge badge-outline-warning shrink-0">Owner/admin</span>
                         <OrbCopyButton :value="API_BASE + e.path" />
                     </div>
                     <h3 class="mt-3 text-base font-bold dark:text-white-light">{{ e.title }}</h3>
@@ -109,7 +110,14 @@
 
 <script lang="ts" setup>
     import type { ApiEndpoint } from '@/utils/apiSpec';
-    import { API_BASE, API_GROUPS, AUTH_NOTE, WEBHOOK_EVENTS, WEBHOOK_SIGNATURE_NOTE, endpointsByGroup } from '@/utils/apiSpec';
+    import { API_BASE, AUTH_NOTE, WEBHOOK_EVENTS, WEBHOOK_SIGNATURE_NOTE, endpointsByGroup, groupsFor, visibleEndpoints } from '@/utils/apiSpec';
+
+    // Same rule as the API Reference: an endpoint a member's key cannot call is
+    // not documentation for them, it is a dead end.
+    const { user } = useAuth();
+    const isManager = computed(() => user.value?.role === 'owner' || user.value?.role === 'admin');
+    const endpoints = computed(() => visibleEndpoints(isManager.value));
+    const groups = computed(() => groupsFor(endpoints.value));
     import { codeSample } from '@/utils/codeSamples';
 
     useHead({ title: 'API Documentation' });

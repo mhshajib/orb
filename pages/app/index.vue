@@ -33,9 +33,12 @@ const { data: apiKeys } = await useAsyncData('app-dashboard-keys', () => listApi
 })
 const hasApiKey = computed(() => (apiKeys.value?.length ?? 0) > 0)
 
+// Org-wide totals are owner/admin only. fetchOrgStats() swallows the error, so
+// a member wouldn't break - they'd just fire a 403 on every dashboard load and
+// render a row of zeroes. Don't ask.
 const { data: stats, pending } = await useAsyncData<OrgStats | null>(
   'app-dashboard-stats',
-  () => fetchOrgStats(),
+  () => (isManager.value ? fetchOrgStats() : Promise.resolve(null)),
   { default: () => null },
 )
 
@@ -174,8 +177,9 @@ const hints = computed(() => {
                 </div>
             </div>
 
-            <!-- Stat cards -->
-            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            <!-- Stat cards. Org-wide counts, so manager-only - see the stats
+                 fetch above. -->
+            <div v-if="isManager" class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
                 <div v-for="card in cards" :key="card.label" class="panel">
                     <div class="flex items-center justify-between">
                         <div
@@ -202,7 +206,7 @@ const hints = computed(() => {
 
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <!-- Quick links -->
-                <div class="panel lg:col-span-2">
+                <div class="panel" :class="isManager ? 'lg:col-span-2' : 'lg:col-span-3'">
                     <div class="mb-5 flex items-center justify-between">
                         <h5 class="text-lg font-semibold dark:text-white-light">Quick links</h5>
                     </div>
@@ -250,8 +254,10 @@ const hints = computed(() => {
                     </div>
                 </div>
 
-                <!-- Plan usage -->
-                <div class="panel">
+                <!-- Plan usage. Reads org-wide counts against the org's caps,
+                     which is a management view - and its numbers come from the
+                     stats call a member no longer makes. -->
+                <div v-if="isManager" class="panel">
                     <div class="mb-5 flex items-center justify-between">
                         <h5 class="text-lg font-semibold dark:text-white-light">Plan usage</h5>
                         <div class="flex items-center gap-2">
