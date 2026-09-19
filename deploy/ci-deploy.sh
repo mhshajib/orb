@@ -32,14 +32,53 @@ echo "==> deploying $APP to $DEPLOY_HOST (env=$ENV, version=$VERSION)"
 test -f .output/server/index.mjs || { echo "FAILED - no build output; did the build step run?"; exit 1; }
 
 echo "==> fetching deploy key from consul"
-mkdir -p ~/.ssh && chmod 700 ~/.ssh
-wget -qO ~/.ssh/id_ed25519 "$CONSUL/v1/kv/apps/$APP/$ENV/deploy_key?raw" || true
-chmod 600 ~/.ssh/id_ed25519
-if [ ! -s ~/.ssh/id_ed25519 ]; then
-  echo "FAILED - missing deploy key in consul at apps/$APP/$ENV/deploy_key"
+# $HOME is not guaranteed to be set in a CI container, and `~` would then expand
+# to nothing and silently put these under /.ssh.
+SSH_DIR="${HOME:-/root}/.ssh"
+KEY="$SSH_DIR/id_ed25519"
+mkdir -p "$SSH_DIR" && chmod 700 "$SSH_DIR"
+
+# busybox wget does NOT create the -O file when the fetch fails, so the old
+# `wget || true` followed by `chmod 600` died on the chmod under `set -e` -
+# before the error message below could ever run. That produced a red build with
+# an empty log. Every failure from here on has to say what it was.
+if ! wget -qO "$KEY" "$CONSUL/v1/kv/apps/$APP/$ENV/deploy_key?raw"; then
+  echo "FAILED - could not fetch apps/$APP/$ENV/deploy_key from $CONSUL"
+  if wget -qO- "$CONSUL/v1/status/leader" >/dev/null 2>&1; then
+    echo "        consul IS reachable from this container, so that key is missing or unreadable"
+  else
+    echo "        consul at $CONSUL is NOT reachable from this container"
+    echo "        (the build step reaches it too - if that one worked and this did not,"
+    echo "         the two steps are not on the same network)"
+  fi
   exit 1
 fi
-ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+if [ ! -s "$KEY" ]; then
+  echo "FAILED - the deploy key at apps/$APP/$ENV/deploy_key is empty"
+  exit 1
+fi
+chmod 600 "$KEY"
+echo "    key ok ($(wc -c < "$KEY") bytes)"
+
+echo "==> recording the host key for $DEPLOY_HOST"
+# ssh-keyscan is the other silent killer: it exits non-zero when it cannot reach
+# port 22, and with `set -e` that ended the script with no output at all.
+if ! ssh-keyscan -H "$DEPLOY_HOST" >> "$SSH_DIR/known_hosts" 2>/dev/null; then
+  echo "FAILED - ssh-keyscan could not reach $DEPLOY_HOST:22 from this container"
+  exit 1
+fi
+if [ ! -s "$SSH_DIR/known_hosts" ]; then
+  echo "FAILED - ssh-keyscan returned no host key for $DEPLOY_HOST"
+  exit 1
+fi
+
+echo "==> checking ssh access as $DEPLOY_USER"
+if ! ssh -i "$KEY" -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=15 "$HOST" "echo ok" >/dev/null 2>&1; then
+  echo "FAILED - cannot ssh to $HOST using the deploy key from consul"
+  echo "        check that the public half is in ~ci/.ssh/authorized_keys on $DEPLOY_HOST"
+  exit 1
+fi
+echo "    ssh ok"
 
 # The build step already wrote .env from Consul. Ship that same file so the
 # server copy never drifts from what the bundle was built against.

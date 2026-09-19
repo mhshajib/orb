@@ -18,7 +18,7 @@ steps:
       # .env is NOT optional here. nuxt.config.ts defaults apiBase to
       # http://localhost:8080, so a build without it would ship an app pointing at
       # nothing. Hence the hard failure below rather than a warning.
-      - wget -qO .env "$CONSUL/v1/kv/apps/$APP/prod/.env?raw"
+      - wget -qO .env "$CONSUL/v1/kv/apps/$APP/prod/.env?raw" || (echo "ERROR cannot reach consul at $CONSUL or the key apps/orb/prod/.env is missing"; exit 1)
       - test -s .env || (echo "ERROR empty or missing .env in consul at apps/orb/prod/.env"; exit 1)
       - grep -q '^NUXT_API_BASE=https' .env || (echo "ERROR NUXT_API_BASE in consul is not an https url; refusing to build production against it"; exit 1)
       - npm ci
