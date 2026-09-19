@@ -11,7 +11,15 @@ const { plans, orderedPlans } = usePlans()
 
 // Negotiated overrides. `isCustomised` is false on enterprise, where custom
 // caps are the norm rather than an exception worth flagging.
-const { isCustomised, customChanges } = useEffectiveLimits()
+const { isCustomised, showsComparison, customChanges, limitRows } = useEffectiveLimits()
+
+// org.plan is what the backend actually enforces (pkg/quota resolves entitlements
+// from it), so it - not the subscription row - decides which plan this org is on.
+// The two can disagree: a staff plan grant used to leave the old subscription
+// behind, which is how an enterprise org ended up reading "Startup" here while
+// the header said Enterprise.
+const org = useOrg()
+if (!org.value) await fetchOrg()
 
 const { data: subscription, pending: subPending, error: subError, refresh: refreshSub } = await useAsyncData(
   'billing-sub',
@@ -32,7 +40,8 @@ const yearly = computed({
   set: (v: boolean) => { cycle.value = v ? 'yearly' : 'monthly' },
 })
 
-const currentPlan = computed<OrgPlan>(() => subscription.value?.plan ?? 'free')
+const currentPlan = computed<OrgPlan>(() => org.value?.plan ?? subscription.value?.plan ?? 'free')
+const currentPlanLabel = computed(() => plans.value[currentPlan.value]?.label ?? currentPlan.value)
 function isCurrentPlan(p: OrgPlan) {
   return currentPlan.value === p
 }
@@ -196,13 +205,13 @@ const invoiceStatusBadge: Record<string, { cls: string, label: string }> = {
               </div>
               <div class="flex-1">
                 <div class="flex flex-wrap items-center gap-2">
-                  <span class="text-2xl font-bold capitalize text-dark dark:text-white-light">{{ plans[subscription.plan]?.label ?? subscription.plan }}</span>
+                  <span class="text-2xl font-bold capitalize text-dark dark:text-white-light">{{ currentPlanLabel }}</span>
                   <span class="badge capitalize" :class="subStatusBadge[subscription.status] ?? 'badge-outline-secondary'">
                     {{ subscription.status.replace('_', ' ') }}
                   </span>
                   <!-- Says the plan name alone doesn't describe what this org
                        actually gets. The detail sits below. -->
-                  <span v-if="isCustomised && customChanges.length" class="badge bg-primary gap-1">
+                  <span v-if="isCustomised" class="badge bg-primary gap-1">
                     <icon-star class="h-3.5 w-3.5" />
                     Custom
                   </span>
@@ -223,21 +232,29 @@ const invoiceStatusBadge: Record<string, { cls: string, label: string }> = {
               </div>
             </div>
 
-            <div v-if="isCustomised && customChanges.length" class="mt-5 border-t border-[#e0e6ed] pt-5 dark:border-[#1b2e4b]">
+            <div v-if="isCustomised" class="mt-5 border-t border-[#e0e6ed] pt-5 dark:border-[#1b2e4b]">
               <div class="mb-3">
-                <h6 class="font-semibold dark:text-white-light">Active custom changes</h6>
+                <h6 class="font-semibold dark:text-white-light">
+                  {{ showsComparison && customChanges.length ? 'Active custom changes' : 'Your agreed limits' }}
+                </h6>
                 <p class="mt-0.5 text-xs text-white-dark">
-                  Agreed for your organisation. These override the
-                  {{ plans[subscription.plan]?.label ?? subscription.plan }} plan's published limits, and are what we enforce.
+                  <template v-if="showsComparison && customChanges.length">
+                    Agreed for your organisation. These override the {{ currentPlanLabel }} plan's published limits, and are what we enforce.
+                  </template>
+                  <template v-else>
+                    Agreed for your organisation, and what we enforce.
+                  </template>
                 </p>
               </div>
               <OrbPlanCustomizations
+                v-if="showsComparison && customChanges.length"
                 :changes="customChanges"
-                :plan-label="plans[subscription.plan]?.label ?? subscription.plan"
+                :plan-label="currentPlanLabel"
               />
+              <OrbPlanLimits v-else :rows="limitRows" />
             </div>
 
-            <div v-if="subscription.plan !== 'free' && !subscription.cancel_at_period_end" class="mt-5 border-t border-[#e0e6ed] pt-4 dark:border-[#1b2e4b]">
+            <div v-if="currentPlan !== 'free' && !subscription.cancel_at_period_end" class="mt-5 border-t border-[#e0e6ed] pt-4 dark:border-[#1b2e4b]">
               <button type="button" class="btn btn-outline-danger btn-sm gap-2" :disabled="!isOwner || cancelling" @click="onCancel">
                 <icon-loader v-if="cancelling" class="h-4 w-4 animate-spin" />
                 {{ cancelling ? 'Cancelling…' : 'Cancel subscription' }}
@@ -252,8 +269,8 @@ const invoiceStatusBadge: Record<string, { cls: string, label: string }> = {
               </div>
               <div class="flex-1 text-sm text-white-dark">
                 <div class="flex flex-wrap items-center gap-2">
-                  <span class="font-semibold text-dark dark:text-white-light">Free plan</span>
-                  <span v-if="isCustomised && customChanges.length" class="badge bg-primary gap-1">
+                  <span class="font-semibold capitalize text-dark dark:text-white-light">{{ currentPlanLabel }} plan</span>
+                  <span v-if="isCustomised" class="badge bg-primary gap-1">
                     <icon-star class="h-3.5 w-3.5" />
                     Custom
                   </span>
@@ -265,14 +282,19 @@ const invoiceStatusBadge: Record<string, { cls: string, label: string }> = {
             <!-- A free org can carry negotiated limits too, and it has no
                  subscription record to hang them off - so the comparison is
                  repeated here rather than living only in the paid branch. -->
-            <div v-if="isCustomised && customChanges.length" class="mt-5 border-t border-[#e0e6ed] pt-5 dark:border-[#1b2e4b]">
+            <div v-if="isCustomised" class="mt-5 border-t border-[#e0e6ed] pt-5 dark:border-[#1b2e4b]">
               <div class="mb-3">
-                <h6 class="font-semibold dark:text-white-light">Active custom changes</h6>
-                <p class="mt-0.5 text-xs text-white-dark">
-                  Agreed for your organisation. These override the Free plan's published limits, and are what we enforce.
-                </p>
+                <h6 class="font-semibold dark:text-white-light">
+                  {{ showsComparison && customChanges.length ? 'Active custom changes' : 'Your agreed limits' }}
+                </h6>
+                <p class="mt-0.5 text-xs text-white-dark">Agreed for your organisation, and what we enforce.</p>
               </div>
-              <OrbPlanCustomizations :changes="customChanges" plan-label="Free" />
+              <OrbPlanCustomizations
+                v-if="showsComparison && customChanges.length"
+                :changes="customChanges"
+                :plan-label="currentPlanLabel"
+              />
+              <OrbPlanLimits v-else :rows="limitRows" />
             </div>
           </template>
         </div>

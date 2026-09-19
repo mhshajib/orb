@@ -5,6 +5,13 @@ import type { PlanLimits } from '@/utils/plans'
  * value. Values arrive pre-formatted so the dashboard and the billing page
  * render the same numbers the same way.
  */
+/** One effective cap, formatted for display. */
+export interface LimitRow {
+  key: string
+  label: string
+  value: string
+}
+
 export interface CustomChange {
   key: string
   label: string
@@ -57,16 +64,18 @@ export function useEffectiveLimits() {
   /** True when staff have negotiated caps for this org. */
   const hasCustomLimits = computed(() => !!org.value?.custom_limits)
 
+  /** Whether to tell the customer their plan has been customised. */
+  const isCustomised = hasCustomLimits
+
   /**
-   * Whether to tell the customer their plan has been customised.
+   * Whether a plan-vs-negotiated comparison is worth drawing.
    *
-   * Enterprise is negotiated by definition - its caps ARE the custom ones, so
-   * a "Custom" badge there states the obvious and a plan-vs-custom comparison
-   * has no meaningful left-hand side (enterprise has no published price). Every
-   * other plan has a public baseline to differ from, which is what makes the
-   * badge worth showing.
+   * Enterprise publishes "Unlimited" for every cap and no price, so diffing
+   * against it produces a column of "Unlimited -> 40,000" rows flagged as
+   * downgrades - technically true, useless to read. Enterprise orgs get the
+   * plain list of what they actually have (limitRows) instead.
    */
-  const isCustomised = computed(
+  const showsComparison = computed(
     () => hasCustomLimits.value && (org.value?.plan ?? 'free') !== 'enterprise',
   )
 
@@ -78,7 +87,7 @@ export function useEffectiveLimits() {
    */
   const customChanges = computed<CustomChange[]>(() => {
     const c = org.value?.custom_limits
-    if (!c || !isCustomised.value)
+    if (!c || !showsComparison.value)
       return []
 
     const base = plans.value[org.value?.plan ?? 'free']
@@ -137,5 +146,23 @@ export function useEffectiveLimits() {
    */
   const customCapChanges = computed(() => customChanges.value.filter(c => c.key !== 'price'))
 
-  return { limits, hasCustomLimits, isCustomised, customChanges, customCapChanges }
+  /**
+   * The caps that actually apply, as ready-to-render rows.
+   *
+   * This is what an enterprise org sees in place of a comparison: the question
+   * "what are my limits" has an answer even when "how do they differ from the
+   * published plan" does not.
+   */
+  const limitRows = computed<LimitRow[]>(() => {
+    const l = limits.value
+    return [
+      { key: 'emails', label: 'Emails per month', value: formatQuota(l.emails) },
+      { key: 'users', label: 'Team members', value: formatQuota(l.users) },
+      { key: 'domains', label: 'Sending domains', value: formatQuota(l.domains) },
+      { key: 'webhooks', label: 'Webhooks', value: formatQuota(l.webhooks) },
+      { key: 'retention', label: 'Log retention', value: l.retentionDays == null ? 'Unlimited' : `${l.retentionDays} days` },
+    ]
+  })
+
+  return { limits, hasCustomLimits, isCustomised, showsComparison, customChanges, customCapChanges, limitRows }
 }

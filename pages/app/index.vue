@@ -19,7 +19,7 @@ const isFree = computed(() => (org.value?.plan ?? 'free') === 'free')
 // Caps the backend actually enforces: the org's negotiated override where set,
 // otherwise its plan.
 const { plans } = usePlans()
-const { limits: effectiveLimits, isCustomised, customCapChanges } = useEffectiveLimits()
+const { limits: effectiveLimits, isCustomised, showsComparison, customCapChanges, limitRows } = useEffectiveLimits()
 const planLabel = computed(() => plans.value[org.value?.plan ?? 'free']?.label ?? (org.value?.plan ?? 'free'))
 const sharedSender = computed(() => (org.value?.slug ? `${org.value.slug}@${sharedDomain}` : ''))
 
@@ -262,9 +262,7 @@ const hints = computed(() => {
                         <h5 class="text-lg font-semibold dark:text-white-light">Plan usage</h5>
                         <div class="flex items-center gap-2">
                             <span class="badge badge-outline-primary capitalize">{{ org?.plan ?? 'free' }}</span>
-                            <!-- Only when there is something behind it: an
-                                 override can be set whose numbers match the plan. -->
-                            <span v-if="isCustomised && customCapChanges.length" class="badge bg-primary gap-1">
+                            <span v-if="isCustomised" class="badge bg-primary gap-1">
                                 <icon-star class="h-3.5 w-3.5" />
                                 Custom
                             </span>
@@ -287,9 +285,16 @@ const hints = computed(() => {
                         <!-- The bars above already show the caps that apply. This
                              says where they came from: without it a negotiated cap
                              just looks like the plan page is wrong. -->
-                        <div v-if="isCustomised && customCapChanges.length" class="border-t border-white-light pt-4 dark:border-[#1b2e4b]">
-                            <h6 class="mb-2 text-xs font-semibold uppercase tracking-wide text-white-dark">Active custom changes</h6>
-                            <OrbPlanCustomizations :changes="customCapChanges" :plan-label="planLabel" />
+                        <div v-if="isCustomised" class="border-t border-white-light pt-4 dark:border-[#1b2e4b]">
+                            <h6 class="mb-2 text-xs font-semibold uppercase tracking-wide text-white-dark">
+                                {{ showsComparison && customCapChanges.length ? 'Active custom changes' : 'Your agreed limits' }}
+                            </h6>
+                            <OrbPlanCustomizations
+                                v-if="showsComparison && customCapChanges.length"
+                                :changes="customCapChanges"
+                                :plan-label="planLabel"
+                            />
+                            <OrbPlanLimits v-else :rows="limitRows" />
                             <!-- Billing is owner/admin only, so a member
                                  following this would just bounce back here. -->
                             <NuxtLink v-if="isManager" to="/app/billing" class="mt-3 inline-block text-xs font-semibold text-primary hover:underline">
