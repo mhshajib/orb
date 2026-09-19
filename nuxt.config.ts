@@ -20,8 +20,13 @@ export default defineNuxtConfig({
                 { name: 'format-detection', content: 'telephone=no' },
             ],
             link: [
-                { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
-                { rel: 'icon', type: 'image/png', href: '/favicon.png' },
+                // Versioned on purpose. orb.bd sits behind Cloudflare, which
+                // caches these for 4 hours (max-age=14400), so an unversioned
+                // /favicon.svg keeps serving the previous mark long after a
+                // deploy. Nuxt content-hashes its own JS and CSS, but files in
+                // public/ keep their names - bump ?v= when the icon changes.
+                { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg?v=2' },
+                { rel: 'icon', type: 'image/png', href: '/favicon.png?v=2' },
                 {
                     rel: 'stylesheet',
                     href: 'https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap',
