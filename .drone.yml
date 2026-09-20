@@ -20,7 +20,12 @@ steps:
       # nothing. Hence the hard failure below rather than a warning.
       - wget -qO .env "$CONSUL/v1/kv/apps/$APP/prod/.env?raw" || (echo "ERROR cannot reach consul at $CONSUL or the key apps/orb/prod/.env is missing"; exit 1)
       - test -s .env || (echo "ERROR empty or missing .env in consul at apps/orb/prod/.env"; exit 1)
-      - grep -q '^NUXT_API_BASE=https' .env || (echo "ERROR NUXT_API_BASE in consul is not an https url; refusing to build production against it"; exit 1)
+      # NUXT_API_BASE is server-only: it is where the Nitro proxy forwards, and
+      # that hop never leaves the VPS, so loopback is the correct production
+      # value - it skips a pointless round trip out to Cloudflare and back for
+      # every API call. https is accepted too, for a split-host setup.
+      # What must never be here is a bare hostname or an empty value.
+      - grep -qE '^NUXT_API_BASE=(https://|http://(127\.0\.0\.1|localhost)(:[0-9]+)?)' .env || (echo "ERROR NUXT_API_BASE in consul must be an https url or a loopback address; refusing to build production against it"; exit 1)
       - npm ci
       - npm run build
       - test -f .output/server/index.mjs || (echo "ERROR build produced no nitro server"; exit 1)

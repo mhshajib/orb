@@ -1,6 +1,6 @@
 import { createError, defineEventHandler } from 'h3'
 import { useRuntimeConfig } from '#imports'
-import { getAccessToken } from '../../utils/cookies'
+import { ensureAccessToken } from '../../utils/api'
 
 /**
  * Mints a ready-to-connect WebSocket URL for the current session.
@@ -11,11 +11,16 @@ import { getAccessToken } from '../../utils/cookies'
  * can call `new WebSocket(url)` once. The frontend should call this endpoint
  * each time it (re)connects so token rotation is picked up automatically.
  *
- * Returns 401 if no valid access cookie exists; the catch-all proxy's refresh
- * mechanism does not run here because the WS upgrade is a one-shot call.
+ * Refreshes through ensureAccessToken rather than reading the access cookie
+ * directly: that cookie lives 14 minutes, so a dashboard left open longer than
+ * that could never re-open its socket — the reconnect loop would 401 forever
+ * while the 7-day refresh cookie sat there unused, and realtime would only come
+ * back on a full page reload.
+ *
+ * Returns 401 only when the refresh cookie is missing or rejected too.
  */
-export default defineEventHandler((event) => {
-  const token = getAccessToken(event)
+export default defineEventHandler(async (event) => {
+  const token = await ensureAccessToken(event)
   if (!token) {
     throw createError({
       statusCode: 401,

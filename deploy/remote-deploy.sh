@@ -79,5 +79,23 @@ if [ "$ok" != "1" ]; then
   exit 1
 fi
 
+# --------------------------------------------------------------- env canary --
+# A 200 from the health check is not enough: this app boots and answers fine
+# while running entirely on nuxt.config.ts defaults, and the only visible symptom
+# is that every browser is handed ws://localhost:8080/ws and realtime silently
+# never connects. That shipped unnoticed for three months. If the served page
+# still advertises the dev default, supervisor is not sourcing .env (see
+# deploy/orb-web.conf) and the release is broken in exactly that invisible way.
+#
+# No rollback here on purpose - the previous release has the same defect, so
+# reverting would only hide it again. Fail loud and fix the wiring.
+if curl -s -m 5 "$HEALTH" | grep -q 'ws://localhost'; then
+  echo "FAILED - the live page still advertises ws://localhost, so .env is not reaching the node process"
+  echo "         check that deploy/orb-web.conf is installed at /etc/supervisor/conf.d/orb-web.conf"
+  echo "         and that /var/www/orb/.env exists, then: sudo supervisorctl update orb-web"
+  exit 1
+fi
+say "env canary ok - serving the configured websocket base"
+
 rm -rf "$STAGING"
 echo "==> orb $VERSION is live"

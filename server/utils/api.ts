@@ -133,3 +133,21 @@ async function tryRefresh(event: H3Event): Promise<string | undefined> {
   writeAuthCookies(event, tokens)
   return tokens.access_token
 }
+
+/**
+ * Returns a usable access token for the current request, refreshing first when
+ * the access cookie has already expired.
+ *
+ * Needed because the access cookie's maxAge (14 min) is deliberately shorter
+ * than everything else in the session: any route that reads it directly —
+ * rather than going through callBackend, which refreshes on a 401 — starts
+ * failing a quarter of an hour into a session even though the 7-day refresh
+ * cookie is still perfectly good. /api/realtime/url is such a route.
+ *
+ * Returns undefined when there is no valid session at all.
+ */
+export async function ensureAccessToken(event: H3Event): Promise<string | undefined> {
+  const current = getAccessToken(event)
+  if (current) return current
+  return await tryRefresh(event)
+}
