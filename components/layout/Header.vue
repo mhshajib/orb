@@ -48,6 +48,21 @@
                         </NuxtLink>
                     </div>
 
+                    <!-- browser push notifications -->
+                    <div v-if="pushVisible" class="shrink-0">
+                        <button
+                            type="button"
+                            class="relative block rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-dark/40 dark:hover:bg-dark/60"
+                            :class="{ 'text-primary': pushOn }"
+                            :disabled="pushStatus === 'pending'"
+                            :title="pushTitle"
+                            @click="togglePush"
+                        >
+                            <icon-bell />
+                            <span v-if="pushOn" class="absolute -bottom-0.5 h-2 w-2 rounded-full bg-success ltr:-right-0.5 rtl:-left-0.5"></span>
+                        </button>
+                    </div>
+
                     <!-- user -->
                     <div class="dropdown shrink-0">
                         <client-only>
@@ -151,6 +166,27 @@
     const { self, initials, displayName } = useSelf();
     const org = useOrg();
     const { count: unread } = useUnreadEmails();
+
+    // Browser push. The button is hidden entirely when the browser can't do it
+    // or the server has no Firebase credentials — offering a toggle that can
+    // never deliver anything is worse than offering nothing. It is also hidden
+    // once blocked, since only the user can undo that from site settings.
+    const { status: pushStatus, isOn: pushOn, enable: enablePush, disable: disablePush } = usePushNotifications();
+    const pushVisible = computed(() => ['off', 'on', 'pending'].includes(pushStatus.value));
+    const pushTitle = computed(() => (pushOn.value ? 'Email notifications on — click to turn off' : 'Notify me about new email'));
+    const { success: pushToastOk, error: pushToastErr } = useToast();
+
+    // Permission must be requested from a user gesture, which is exactly what
+    // this click is — never call enable() on mount.
+    async function togglePush() {
+        if (pushOn.value) {
+            await disablePush();
+            pushToastOk('Email notifications turned off');
+            return;
+        }
+        if (await enablePush()) pushToastOk("You'll be notified when new email arrives");
+        else pushToastErr('Could not turn on notifications');
+    }
 
     const route = useRoute();
     const developerItems = [

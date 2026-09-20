@@ -73,6 +73,15 @@ export function useAuth() {
   }
 
   async function logout() {
+    // Drop this browser's push registration first, while the session cookie is
+    // still valid — otherwise the next person to use this machine gets
+    // notifications about the previous user's mail.
+    try {
+      await usePushNotifications().forget()
+    }
+    catch {
+      // ignore — never let push block a logout
+    }
     try {
       await $fetch('/api/auth/logout', { method: 'POST' })
     }

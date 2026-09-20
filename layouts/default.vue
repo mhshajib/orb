@@ -108,6 +108,7 @@
     const { self, fetchSelf } = useSelf();
     const { connect, useOn } = useRealtime();
     const { open: composeOpen, instance: composeInstance } = useCompose();
+    const push = usePushNotifications();
     const { success: toastOk, error: toastErr } = useToast();
 
     const needsVerify = computed(() => self.value?.status === 'pending_verification');
@@ -141,6 +142,11 @@
         try {
             connect();
         } catch { /* realtime is best-effort */ }
+
+        // Re-arm browser push if this user already granted permission. Never
+        // prompts — the prompt is behind the header's bell button, because
+        // browsers reject a permission request that isn't tied to a click.
+        push.init().catch(() => { /* push is an enhancement, never fatal */ });
 
         window.onscroll = () => {
             showTopButton.value = document.body.scrollTop > 50 || document.documentElement.scrollTop > 50;

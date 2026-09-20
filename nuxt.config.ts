@@ -82,6 +82,28 @@ export default defineNuxtConfig({
             // Shared free-tier sending domain — free orgs send as "<slug>@<this>".
             // Must match the backend's mailer.shared_sending_domain.
             sharedSendingDomain: 'orb.bd',
+            // Firebase web app config — browser push for inbound mail. Every
+            // value here is public by design (it identifies the project, it
+            // doesn't authorise anything; sends are authorised by the service
+            // account on the API side). Override per-key with
+            // NUXT_PUBLIC_FIREBASE_API_KEY, _PROJECT_ID, _VAPID_KEY, etc.
+            //
+            // Keep in sync with public/firebase-messaging-sw.js: a service
+            // worker is served as a static file, so it cannot read
+            // runtimeConfig and carries its own copy.
+            firebase: {
+                apiKey: 'AIzaSyAC_-tLADrZUjPxnqirjikeOuq4rMdfDcE',
+                authDomain: 'orb-bd.firebaseapp.com',
+                projectId: 'orb-bd',
+                storageBucket: 'orb-bd.firebasestorage.app',
+                messagingSenderId: '671856313270',
+                appId: '1:671856313270:web:569074b99687c904a6b717',
+                // Web Push certificate: Firebase console → Project settings →
+                // Cloud Messaging → Web configuration → Key pair. Without it
+                // getToken() cannot mint a registration token, so push stays
+                // off and the dashboard simply never offers to enable it.
+                vapidKey: '',
+            },
         },
     },
 
